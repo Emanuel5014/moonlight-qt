@@ -52,6 +52,7 @@
 #define SER_KEEPAWAKE "keepawake"
 #define SER_LANGUAGE "language"
 #define SER_RENDERER "renderer"
+#define SER_LOWLATENCYBACKUP "lowLatency/backup"
 
 #define CURRENT_DEFAULT_VER 2
 
@@ -362,6 +363,63 @@ void StreamingPreferences::save()
     settings.setValue(SER_SWAPFACEBUTTONS, swapFaceButtons);
     settings.setValue(SER_CAPTURESYSKEYS, captureSysKeysMode);
     settings.setValue(SER_KEEPAWAKE, keepAwake);
+}
+
+bool StreamingPreferences::isLowLatencyPresetApplied() const
+{
+    QSettings settings;
+    return settings.contains(SER_LOWLATENCYBACKUP "/" SER_VSYNC);
+}
+
+void StreamingPreferences::applyLowLatencyPreset()
+{
+    // Don't overwrite the user's settings with the preset values if it's already applied
+    if (!isLowLatencyPresetApplied()) {
+        QSettings settings;
+        settings.beginGroup(SER_LOWLATENCYBACKUP);
+        settings.setValue(SER_VSYNC, enableVsync);
+        settings.setValue(SER_FRAMEPACING, framePacing);
+        settings.setValue(SER_VIDEODEC, static_cast<int>(videoDecoderSelection));
+        settings.setValue(SER_RENDERER, static_cast<int>(rendererSelection));
+        settings.endGroup();
+    }
+
+    enableVsync = false;
+    framePacing = false;
+    videoDecoderSelection = VideoDecoderSelection::VDS_FORCE_HARDWARE;
+    rendererSelection = RendererSelection::RS_AUTO;
+    save();
+
+    emit enableVsyncChanged();
+    emit framePacingChanged();
+    emit videoDecoderSelectionChanged();
+    emit rendererSelectionChanged();
+    emit lowLatencyPresetChanged();
+}
+
+void StreamingPreferences::restorePreLowLatency()
+{
+    if (!isLowLatencyPresetApplied()) {
+        return;
+    }
+
+    QSettings settings;
+    settings.beginGroup(SER_LOWLATENCYBACKUP);
+    enableVsync = settings.value(SER_VSYNC, enableVsync).toBool();
+    framePacing = settings.value(SER_FRAMEPACING, framePacing).toBool();
+    videoDecoderSelection = static_cast<VideoDecoderSelection>(settings.value(SER_VIDEODEC,
+                                                                              static_cast<int>(videoDecoderSelection)).toInt());
+    rendererSelection = static_cast<RendererSelection>(settings.value(SER_RENDERER,
+                                                                      static_cast<int>(rendererSelection)).toInt());
+    settings.endGroup();
+    settings.remove(SER_LOWLATENCYBACKUP);
+    save();
+
+    emit enableVsyncChanged();
+    emit framePacingChanged();
+    emit videoDecoderSelectionChanged();
+    emit rendererSelectionChanged();
+    emit lowLatencyPresetChanged();
 }
 
 int StreamingPreferences::getDefaultBitrate(int width, int height, int fps, bool yuv444)

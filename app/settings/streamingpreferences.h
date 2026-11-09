@@ -157,8 +157,17 @@ public:
     Q_PROPERTY(bool keepAwake MEMBER keepAwake NOTIFY keepAwakeChanged)
     Q_PROPERTY(CaptureSysKeysMode captureSysKeysMode MEMBER captureSysKeysMode NOTIFY captureSysKeysModeChanged)
     Q_PROPERTY(Language language MEMBER language NOTIFY languageChanged);
+    Q_PROPERTY(bool lowLatencyPresetApplied READ isLowLatencyPresetApplied NOTIFY lowLatencyPresetChanged)
 
     Q_INVOKABLE bool retranslate();
+
+    // Turns off V-Sync and frame pacing and forces hardware decoding,
+    // backing up the previous values so they can be restored.
+    Q_INVOKABLE void applyLowLatencyPreset();
+
+    Q_INVOKABLE void restorePreLowLatency();
+
+    bool isLowLatencyPresetApplied() const;
 
     // Directly accessible members for preferences
     int width;
@@ -238,6 +247,7 @@ signals:
     void keepAwakeChanged();
     void languageChanged();
     void rendererSelectionChanged();
+    void lowLatencyPresetChanged();
 
 private:
     explicit StreamingPreferences(QQmlEngine *qmlEngine);
