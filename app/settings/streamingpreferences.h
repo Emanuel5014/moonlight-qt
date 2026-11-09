@@ -121,6 +121,13 @@ public:
     };
     Q_ENUM(CaptureSysKeysMode);
 
+    enum VpnMode
+    {
+        VPN_AUTO,
+        VPN_TREAT_AS_LAN,
+    };
+    Q_ENUM(VpnMode);
+
     Q_PROPERTY(int width MEMBER width NOTIFY displayModeChanged)
     Q_PROPERTY(int height MEMBER height NOTIFY displayModeChanged)
     Q_PROPERTY(int fps MEMBER fps NOTIFY displayModeChanged)
@@ -159,6 +166,8 @@ public:
     Q_PROPERTY(bool keepAwake MEMBER keepAwake NOTIFY keepAwakeChanged)
     Q_PROPERTY(CaptureSysKeysMode captureSysKeysMode MEMBER captureSysKeysMode NOTIFY captureSysKeysModeChanged)
     Q_PROPERTY(Language language MEMBER language NOTIFY languageChanged);
+    Q_PROPERTY(VpnMode vpnMode MEMBER vpnMode NOTIFY vpnModeChanged)
+    Q_PROPERTY(int vpnTunnelMtu MEMBER vpnTunnelMtu NOTIFY vpnTunnelMtuChanged)
     Q_PROPERTY(bool lowLatencyPresetApplied READ isLowLatencyPresetApplied NOTIFY lowLatencyPresetChanged)
     Q_PROPERTY(int shortcutModifiers MEMBER shortcutModifiers NOTIFY shortcutsChanged)
     Q_PROPERTY(QVariantMap shortcutKeys READ getShortcutKeys NOTIFY shortcutsChanged)
@@ -233,6 +242,8 @@ public:
     Language language;
     CaptureSysKeysMode captureSysKeysMode;
     RendererSelection rendererSelection;
+    VpnMode vpnMode;
+    int vpnTunnelMtu;
     int shortcutModifiers;
     QMap<QString, QString> shortcutKeys;
 
@@ -273,6 +284,8 @@ signals:
     void keepAwakeChanged();
     void languageChanged();
     void rendererSelectionChanged();
+    void vpnModeChanged();
+    void vpnTunnelMtuChanged();
     void shortcutsChanged();
     void lowLatencyPresetChanged();
 
