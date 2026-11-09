@@ -1005,6 +1005,24 @@ Flickable {
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("This will close the app or game you are streaming when you end your stream. You will lose any unsaved progress!")
                 }
+
+                CheckBox {
+                    id: clipboardSyncCheck
+                    hoverEnabled: true
+                    width: parent.width
+                    text: qsTr("Sync clipboard with the host PC")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.clipboardSync
+                    onCheckedChanged: {
+                        StreamingPreferences.clipboardSync = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 10000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Text copied on this PC can be pasted on the host right away, and vice versa.") + " " +
+                                  qsTr("This requires a host with the streamfork clipboard extension. With other hosts, use the paste text shortcut instead.")
+                }
             }
         }
 
