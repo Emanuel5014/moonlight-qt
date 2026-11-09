@@ -2,6 +2,7 @@
 
 #include "settings/streamingpreferences.h"
 #include "backend/computermanager.h"
+#include "keymap.h"
 
 #include "SDL_compat.h"
 
@@ -227,6 +228,7 @@ private:
     QString m_OldIgnoreDevicesExcept;
     QStringList m_IgnoreDeviceGuids;
     StreamingPreferences::CaptureSysKeysMode m_CaptureSystemKeysMode;
+    ModifierMap m_ModifierMap;
     int m_MouseCursorCapturedVisibilityState;
 
     struct {

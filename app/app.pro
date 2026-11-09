@@ -190,6 +190,7 @@ SOURCES += \
     streaming/input/gamepad.cpp \
     streaming/input/input.cpp \
     streaming/input/keyboard.cpp \
+    streaming/input/keymap.cpp \
     streaming/input/mouse.cpp \
     streaming/input/reltouch.cpp \
     streaming/session.cpp \
@@ -231,6 +232,7 @@ HEADERS += \
     settings/streamingpreferences.h \
     settings/shortcuts.h \
     streaming/input/input.h \
+    streaming/input/keymap.h \
     streaming/session.h \
     streaming/clipboardsync.h \
     streaming/audio/renderers/renderer.h \

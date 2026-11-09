@@ -53,6 +53,10 @@
 #define SER_KEEPAWAKE "keepawake"
 #define SER_LANGUAGE "language"
 #define SER_RENDERER "renderer"
+#define SER_KEYBOARDMODIFIERMODE "keyboardmodifiermode"
+#define SER_MODIFIERMAPGUI "modifiermapgui"
+#define SER_MODIFIERMAPCTRL "modifiermapctrl"
+#define SER_MODIFIERMAPALT "modifiermapalt"
 #define SER_CLIPBOARDSYNC "clipboardsync"
 #define SER_VPNMODE "vpnmode"
 #define SER_VPNTUNNELMTU "vpntunnelmtu"
@@ -178,6 +182,15 @@ void StreamingPreferences::reload()
                                                                                                                  : UIDisplayMode::UI_MAXIMIZED)).toInt());
     language = static_cast<Language>(settings.value(SER_LANGUAGE,
                                                     static_cast<int>(Language::LANG_AUTO)).toInt());
+    keyboardModifierMode = static_cast<KeyboardModifierMode>(settings.value(SER_KEYBOARDMODIFIERMODE,
+                                                             static_cast<int>(KeyboardModifierMode::KMM_AUTO)).toInt());
+    // The custom mapping starts from the Mac to Windows preset
+    modifierMapGui = static_cast<ModifierTarget>(settings.value(SER_MODIFIERMAPGUI,
+                                                 static_cast<int>(ModifierTarget::MT_CTRL)).toInt());
+    modifierMapCtrl = static_cast<ModifierTarget>(settings.value(SER_MODIFIERMAPCTRL,
+                                                  static_cast<int>(ModifierTarget::MT_WIN)).toInt());
+    modifierMapAlt = static_cast<ModifierTarget>(settings.value(SER_MODIFIERMAPALT,
+                                                 static_cast<int>(ModifierTarget::MT_ALT)).toInt());
     clipboardSync = settings.value(SER_CLIPBOARDSYNC, true).toBool();
     vpnMode = static_cast<VpnMode>(settings.value(SER_VPNMODE,
                                                   static_cast<int>(VpnMode::VPN_AUTO)).toInt());
@@ -385,6 +398,10 @@ void StreamingPreferences::save()
     settings.setValue(SER_SWAPFACEBUTTONS, swapFaceButtons);
     settings.setValue(SER_CAPTURESYSKEYS, captureSysKeysMode);
     settings.setValue(SER_KEEPAWAKE, keepAwake);
+    settings.setValue(SER_KEYBOARDMODIFIERMODE, static_cast<int>(keyboardModifierMode));
+    settings.setValue(SER_MODIFIERMAPGUI, static_cast<int>(modifierMapGui));
+    settings.setValue(SER_MODIFIERMAPCTRL, static_cast<int>(modifierMapCtrl));
+    settings.setValue(SER_MODIFIERMAPALT, static_cast<int>(modifierMapAlt));
     settings.setValue(SER_CLIPBOARDSYNC, clipboardSync);
     settings.setValue(SER_VPNMODE, static_cast<int>(vpnMode));
     settings.setValue(SER_VPNTUNNELMTU, vpnTunnelMtu);
