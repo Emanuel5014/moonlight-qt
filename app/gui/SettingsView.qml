@@ -1091,6 +1091,24 @@ Flickable {
                         ToolTip.text: qsTr("MTU of the VPN network interface. The default for WireGuard is 1420.")
                     }
                 }
+
+                CheckBox {
+                    id: clipboardSyncCheck
+                    hoverEnabled: true
+                    width: parent.width
+                    text: qsTr("Sync clipboard with the host PC")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.clipboardSync
+                    onCheckedChanged: {
+                        StreamingPreferences.clipboardSync = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 10000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Text copied on this PC can be pasted on the host right away, and vice versa.") + " " +
+                                  qsTr("This requires a host with the streamfork clipboard extension. With other hosts, use the paste text shortcut instead.")
+                }
             }
         }
 

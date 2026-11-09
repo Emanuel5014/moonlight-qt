@@ -86,7 +86,9 @@ CONNECTION_LISTENER_CALLBACKS Session::k_ConnCallbacks = {
     Session::clRumbleTriggers,
     Session::clSetMotionEventState,
     Session::clSetControllerLED,
-    Session::clSetAdaptiveTriggers
+    Session::clSetAdaptiveTriggers,
+    ClipboardSync::clClipboardReceived,
+    ClipboardSync::clStreamforkReady
 };
 
 Session* Session::s_ActiveSession;
@@ -1811,6 +1813,10 @@ void Session::start()
     // NB: m_InputHandler must be initialize before starting the connection.
     m_InputHandler = new SdlInputHandler(*m_Preferences, m_StreamConfig.width, m_StreamConfig.height);
 
+    // This must also happen before starting the connection, since it decides which
+    // protocol extensions we request from the host.
+    m_ClipboardSync.start(m_Preferences->clipboardSync);
+
     // Kick off the async connection thread then return to the caller to pump the event loop
     auto thread = new AsyncConnectionStartThread(this);
     QObject::connect(thread, &QThread::finished, this, &Session::exec);
@@ -1834,6 +1840,7 @@ void Session::exec()
 {
     // If the connection failed, clean up and abort the connection.
     if (!m_AsyncConnectionSuccess) {
+        m_ClipboardSync.stop();
         delete m_InputHandler;
         m_InputHandler = nullptr;
         SDL_QuitSubSystem(SDL_INIT_VIDEO);
@@ -2089,6 +2096,11 @@ void Session::exec()
                 m_InputHandler->setAdaptiveTriggers((uint16_t)(uintptr_t)event.user.data1,
                                                     (DualSenseOutputReport *)event.user.data2);
                 break;
+            case SDL_CODE_CLIPBOARD_RECEIVED:
+            case SDL_CODE_STREAMFORK_READY:
+            case SDL_CODE_CLIPBOARD_SEND:
+                m_ClipboardSync.handleUserEvent(event.user);
+                break;
             default:
                 SDL_assert(false);
             }
@@ -2303,6 +2315,9 @@ void Session::exec()
             presence.runCallbacks();
             m_InputHandler->handleKeyEvent(&event.key);
             break;
+        case SDL_CLIPBOARDUPDATE:
+            m_ClipboardSync.handleClipboardUpdate();
+            break;
         case SDL_MOUSEBUTTONDOWN:
         case SDL_MOUSEBUTTONUP:
             presence.runCallbacks();
@@ -2361,6 +2376,8 @@ void Session::exec()
     }
 
 DispatchDeferredCleanup:
+    m_ClipboardSync.stop();
+
     // Switch back to synchronous logging mode
     StreamUtils::exitAsyncLoggingMode();
 

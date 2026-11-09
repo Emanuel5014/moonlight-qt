@@ -53,6 +53,7 @@
 #define SER_KEEPAWAKE "keepawake"
 #define SER_LANGUAGE "language"
 #define SER_RENDERER "renderer"
+#define SER_CLIPBOARDSYNC "clipboardsync"
 #define SER_VPNMODE "vpnmode"
 #define SER_VPNTUNNELMTU "vpntunnelmtu"
 #define SER_SHORTCUTMODIFIERS "shortcutmodifiers"
@@ -177,6 +178,7 @@ void StreamingPreferences::reload()
                                                                                                                  : UIDisplayMode::UI_MAXIMIZED)).toInt());
     language = static_cast<Language>(settings.value(SER_LANGUAGE,
                                                     static_cast<int>(Language::LANG_AUTO)).toInt());
+    clipboardSync = settings.value(SER_CLIPBOARDSYNC, true).toBool();
     vpnMode = static_cast<VpnMode>(settings.value(SER_VPNMODE,
                                                   static_cast<int>(VpnMode::VPN_AUTO)).toInt());
     // 1420 is the default WireGuard MTU
@@ -383,6 +385,7 @@ void StreamingPreferences::save()
     settings.setValue(SER_SWAPFACEBUTTONS, swapFaceButtons);
     settings.setValue(SER_CAPTURESYSKEYS, captureSysKeysMode);
     settings.setValue(SER_KEEPAWAKE, keepAwake);
+    settings.setValue(SER_CLIPBOARDSYNC, clipboardSync);
     settings.setValue(SER_VPNMODE, static_cast<int>(vpnMode));
     settings.setValue(SER_VPNTUNNELMTU, vpnTunnelMtu);
     settings.setValue(SER_SHORTCUTMODIFIERS, shortcutModifiers);
