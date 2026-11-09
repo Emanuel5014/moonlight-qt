@@ -849,6 +849,47 @@ Flickable {
                     }
                 }
 
+                Button {
+                    id: lowLatencyPresetButton
+                    text: StreamingPreferences.lowLatencyPresetApplied ? qsTr("Restore previous video settings") : qsTr("Apply low latency profile")
+                    font.pointSize: 10
+
+                    function indexOfValue(listModel, val) {
+                        for (var i = 0; i < listModel.count; i++) {
+                            if (listModel.get(i).val === val) {
+                                return i
+                            }
+                        }
+                        return 0
+                    }
+
+                    onClicked: {
+                        if (StreamingPreferences.lowLatencyPresetApplied) {
+                            StreamingPreferences.restorePreLowLatency()
+                        }
+                        else {
+                            StreamingPreferences.applyLowLatencyPreset()
+                        }
+
+                        // Clicking these controls breaks their bindings and the combo boxes only
+                        // read the preferences on creation, so resync them with the new values.
+                        vsyncCheck.checked = Qt.binding(function() { return StreamingPreferences.enableVsync })
+                        framePacingCheck.checked = Qt.binding(function() { return StreamingPreferences.enableVsync && StreamingPreferences.framePacing })
+                        decoderComboBox.currentIndex = indexOfValue(decoderListModel, StreamingPreferences.videoDecoderSelection)
+                        rendererComboBox.currentIndex = indexOfValue(rendererListModel, StreamingPreferences.rendererSelection)
+                    }
+                }
+
+                Label {
+                    width: parent.width
+                    text: StreamingPreferences.lowLatencyPresetApplied ?
+                              qsTr("Low latency profile active: V-Sync and frame pacing are off and hardware decoding is forced.") :
+                              qsTr("The low latency profile turns off V-Sync and frame pacing and forces hardware decoding. This reduces latency, but the picture may show tearing.")
+                    font.pointSize: 9
+                    font.italic: true
+                    wrapMode: Text.Wrap
+                }
+
                 CheckBox {
                     id: enableHdr
                     width: parent.width

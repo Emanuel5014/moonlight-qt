@@ -159,6 +159,7 @@ public:
     Q_PROPERTY(bool keepAwake MEMBER keepAwake NOTIFY keepAwakeChanged)
     Q_PROPERTY(CaptureSysKeysMode captureSysKeysMode MEMBER captureSysKeysMode NOTIFY captureSysKeysModeChanged)
     Q_PROPERTY(Language language MEMBER language NOTIFY languageChanged);
+    Q_PROPERTY(bool lowLatencyPresetApplied READ isLowLatencyPresetApplied NOTIFY lowLatencyPresetChanged)
     Q_PROPERTY(int shortcutModifiers MEMBER shortcutModifiers NOTIFY shortcutsChanged)
     Q_PROPERTY(QVariantMap shortcutKeys READ getShortcutKeys NOTIFY shortcutsChanged)
 
@@ -183,6 +184,14 @@ public:
     Q_INVOKABLE void resetShortcuts();
 
     QVariantMap getShortcutKeys() const;
+
+    // Turns off V-Sync and frame pacing and forces hardware decoding,
+    // backing up the previous values so they can be restored.
+    Q_INVOKABLE void applyLowLatencyPreset();
+
+    Q_INVOKABLE void restorePreLowLatency();
+
+    bool isLowLatencyPresetApplied() const;
 
     // Directly accessible members for preferences
     int width;
@@ -265,6 +274,7 @@ signals:
     void languageChanged();
     void rendererSelectionChanged();
     void shortcutsChanged();
+    void lowLatencyPresetChanged();
 
 private:
     explicit StreamingPreferences(QQmlEngine *qmlEngine);
