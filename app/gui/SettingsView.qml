@@ -1422,6 +1422,125 @@ Flickable {
                     }
                 }
 
+                Row {
+                    spacing: 5
+                    width: parent.width
+
+                    Label {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("Modifier keys:")
+                        font.pointSize: 12
+                    }
+
+                    AutoResizingComboBox {
+                        // ignore setting the index at first, and actually set it when the component is loaded
+                        Component.onCompleted: {
+                            var saved_kmm = StreamingPreferences.keyboardModifierMode
+                            currentIndex = 0
+                            for (var i = 0; i < keyboardModifierModeListModel.count; i++) {
+                                if (keyboardModifierModeListModel.get(i).val === saved_kmm) {
+                                    currentIndex = i
+                                    break
+                                }
+                            }
+                        }
+
+                        id: keyboardModifierModeComboBox
+                        hoverEnabled: true
+                        textRole: "text"
+                        model: ListModel {
+                            id: keyboardModifierModeListModel
+                            ListElement {
+                                text: qsTr("Automatic")
+                                val: StreamingPreferences.KMM_AUTO
+                            }
+                            ListElement {
+                                text: qsTr("Unchanged")
+                                val: StreamingPreferences.KMM_OFF
+                            }
+                            ListElement {
+                                text: qsTr("Mac to Windows (Cmd as Ctrl)")
+                                val: StreamingPreferences.KMM_MAC_TO_WINDOWS
+                            }
+                            ListElement {
+                                text: qsTr("Custom")
+                                val: StreamingPreferences.KMM_CUSTOM
+                            }
+                        }
+
+                        // ::onActivated must be used, as it only listens for when the index is changed by a human
+                        onActivated: {
+                            StreamingPreferences.keyboardModifierMode = keyboardModifierModeListModel.get(currentIndex).val
+                        }
+
+                        ToolTip.delay: 1000
+                        ToolTip.timeout: 10000
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Mac to Windows sends Cmd as Ctrl, so Cmd+C, Cmd+V and Cmd+Z work as expected on a Windows host. Ctrl is sent as the Windows key while system keyboard shortcuts are captured.") + "\n\n" +
+                                      qsTr("Automatic uses Mac to Windows on macOS and leaves the keys unchanged elsewhere. Custom lets you choose what each modifier key sends.")
+                    }
+                }
+
+                // One row per client modifier key, shown in custom mode
+                Repeater {
+                    model: [
+                        { label: SystemProperties.isDarwin ? qsTr("Cmd sends:") : qsTr("Windows key sends:"), pref: "modifierMapGui" },
+                        { label: qsTr("Ctrl sends:"), pref: "modifierMapCtrl" },
+                        { label: SystemProperties.isDarwin ? qsTr("Option sends:") : qsTr("Alt sends:"), pref: "modifierMapAlt" }
+                    ]
+
+                    delegate: Row {
+                        spacing: 5
+                        leftPadding: 20
+                        visible: StreamingPreferences.keyboardModifierMode === StreamingPreferences.KMM_CUSTOM
+
+                        Label {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: modelData.label
+                            font.pointSize: 12
+                        }
+
+                        AutoResizingComboBox {
+                            Component.onCompleted: {
+                                var saved = StreamingPreferences[modelData.pref]
+                                currentIndex = 0
+                                for (var i = 0; i < modifierTargetListModel.count; i++) {
+                                    if (modifierTargetListModel.get(i).val === saved) {
+                                        currentIndex = i
+                                        break
+                                    }
+                                }
+                            }
+
+                            textRole: "text"
+                            model: ListModel {
+                                id: modifierTargetListModel
+                                ListElement {
+                                    text: qsTr("Ctrl")
+                                    val: StreamingPreferences.MT_CTRL
+                                }
+                                ListElement {
+                                    text: qsTr("Windows key")
+                                    val: StreamingPreferences.MT_WIN
+                                }
+                                ListElement {
+                                    text: qsTr("Alt")
+                                    val: StreamingPreferences.MT_ALT
+                                }
+                                ListElement {
+                                    text: qsTr("Nothing")
+                                    val: StreamingPreferences.MT_NONE
+                                }
+                            }
+
+                            // ::onActivated must be used, as it only listens for when the index is changed by a human
+                            onActivated: {
+                                StreamingPreferences[modelData.pref] = modifierTargetListModel.get(currentIndex).val
+                            }
+                        }
+                    }
+                }
+
                 CheckBox {
                     id: absoluteTouchCheck
                     hoverEnabled: true

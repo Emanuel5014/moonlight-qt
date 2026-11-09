@@ -226,6 +226,21 @@ void SdlInputHandler::handleKeyEvent(SDL_KeyboardEvent* event)
         }
     }
 
+    // Remap the modifiers for the host OS. This happens after the special key combos, which use
+    // the keys the user sees, and before tracking the key state so the key up event releases the
+    // same key on the host. We work on a copy so the caller's event is untouched.
+    SDL_KeyboardEvent remappedEvent = *event;
+    MappedKey mappedKey = applyModifierMap(m_ModifierMap,
+                                           event->keysym.scancode,
+                                           event->keysym.mod,
+                                           isSystemKeyCaptureActive());
+    if (mappedKey.drop) {
+        return;
+    }
+    remappedEvent.keysym.scancode = mappedKey.scancode;
+    remappedEvent.keysym.mod = mappedKey.mod;
+    event = &remappedEvent;
+
     // Set modifier flags
     modifiers = 0;
     if (event->keysym.mod & KMOD_CTRL) {

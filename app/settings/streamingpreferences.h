@@ -119,6 +119,27 @@ public:
     };
     Q_ENUM(CaptureSysKeysMode);
 
+    // New entries must go at the end of the enum
+    enum KeyboardModifierMode
+    {
+        KMM_OFF,
+        KMM_MAC_TO_WINDOWS,
+        KMM_AUTO, // Mac to Windows on macOS clients, off elsewhere
+        KMM_CUSTOM, // Uses modifierMapGui/Ctrl/Alt
+    };
+    Q_ENUM(KeyboardModifierMode);
+
+    // What a client modifier key sends to the host in KMM_CUSTOM mode.
+    // New entries must go at the end of the enum.
+    enum ModifierTarget
+    {
+        MT_CTRL,
+        MT_WIN,
+        MT_ALT,
+        MT_NONE,
+    };
+    Q_ENUM(ModifierTarget);
+
     Q_PROPERTY(int width MEMBER width NOTIFY displayModeChanged)
     Q_PROPERTY(int height MEMBER height NOTIFY displayModeChanged)
     Q_PROPERTY(int fps MEMBER fps NOTIFY displayModeChanged)
@@ -157,6 +178,10 @@ public:
     Q_PROPERTY(bool keepAwake MEMBER keepAwake NOTIFY keepAwakeChanged)
     Q_PROPERTY(CaptureSysKeysMode captureSysKeysMode MEMBER captureSysKeysMode NOTIFY captureSysKeysModeChanged)
     Q_PROPERTY(Language language MEMBER language NOTIFY languageChanged);
+    Q_PROPERTY(KeyboardModifierMode keyboardModifierMode MEMBER keyboardModifierMode NOTIFY keyboardModifierModeChanged)
+    Q_PROPERTY(ModifierTarget modifierMapGui MEMBER modifierMapGui NOTIFY keyboardModifierModeChanged)
+    Q_PROPERTY(ModifierTarget modifierMapCtrl MEMBER modifierMapCtrl NOTIFY keyboardModifierModeChanged)
+    Q_PROPERTY(ModifierTarget modifierMapAlt MEMBER modifierMapAlt NOTIFY keyboardModifierModeChanged)
 
     Q_INVOKABLE bool retranslate();
 
@@ -200,6 +225,10 @@ public:
     Language language;
     CaptureSysKeysMode captureSysKeysMode;
     RendererSelection rendererSelection;
+    KeyboardModifierMode keyboardModifierMode;
+    ModifierTarget modifierMapGui; // Cmd on macOS, Windows key elsewhere
+    ModifierTarget modifierMapCtrl;
+    ModifierTarget modifierMapAlt; // Option on macOS
 
 signals:
     void displayModeChanged();
@@ -238,6 +267,7 @@ signals:
     void keepAwakeChanged();
     void languageChanged();
     void rendererSelectionChanged();
+    void keyboardModifierModeChanged();
 
 private:
     explicit StreamingPreferences(QQmlEngine *qmlEngine);

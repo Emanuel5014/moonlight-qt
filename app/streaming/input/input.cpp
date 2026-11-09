@@ -40,6 +40,16 @@ SdlInputHandler::SdlInputHandler(StreamingPreferences& prefs, int streamWidth, i
         m_CaptureSystemKeysMode = StreamingPreferences::CSK_ALWAYS;
     }
 
+    m_ModifierMap = getModifierMap(prefs);
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                "Modifier keys sent to the host: GUI -> %s, Ctrl -> %s, Alt -> %s",
+                modifierTargetName(m_ModifierMap.gui),
+                modifierTargetName(m_ModifierMap.ctrl),
+                modifierTargetName(m_ModifierMap.alt));
+#ifndef QT_NO_DEBUG
+    keymapSelfTest();
+#endif
+
     // SDL3 breaks our auto-capture-on-leave logic because the mouse focus has already
     // been lost by the time we attempt to call SDL_CaptureMouse(). Fortunately, SDL3's
     // own auto-capture logic seems to be stable now (unlike SDL2), so we can rely on
