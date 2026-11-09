@@ -188,6 +188,8 @@ private:
 
     void performSpecialKeyCombo(KeyCombo combo);
 
+    bool shortcutModifiersMatch(Uint16 mod);
+
     static
     Uint32 longPressTimerCallback(Uint32 interval, void* param);
 
@@ -233,6 +235,7 @@ private:
         SDL_Scancode scanCode;
         bool enabled;
     } m_SpecialKeyCombos[KeyComboMax];
+    int m_ShortcutModifiers;
 
     SDL_TouchFingerEvent m_LastTouchDownEvent;
     SDL_TouchFingerEvent m_LastTouchUpEvent;

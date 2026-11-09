@@ -4,6 +4,7 @@ import QtQuick.Window 2.2
 
 import SdlGamepadKeyNavigation 1.0
 import Session 1.0
+import StreamingPreferences 1.0
 import SystemProperties 1.0
 
 Item {
@@ -152,8 +153,13 @@ Item {
             // in the hintText control itself to synchronize
             // with Session.exec() which requires no concurrent
             // gamepad usage.
-            hintText.text = qsTr("Tip:") + " " + qsTr("Press %1 to disconnect your session").arg(SdlGamepadKeyNavigation.getConnectedGamepads() > 0 ?
-                                                  qsTr("Start+Select+L1+R1") : qsTr("Ctrl+Alt+Shift+Q"))
+            var quitShortcut = SdlGamepadKeyNavigation.getConnectedGamepads() > 0 ?
+                        qsTr("Start+Select+L1+R1") :
+                        StreamingPreferences.replaceDefaultShortcut(qsTr("Ctrl+Alt+Shift+Q"), "Q",
+                                                                    StreamingPreferences.shortcutModifiers,
+                                                                    StreamingPreferences.shortcutKeys["quit"])
+            // The quit shortcut may have been disabled by the user
+            hintText.text = quitShortcut !== "" ? qsTr("Tip:") + " " + qsTr("Press %1 to disconnect your session").arg(quitShortcut) : ""
 
             // Stop GUI gamepad usage now
             SdlGamepadKeyNavigation.disable()

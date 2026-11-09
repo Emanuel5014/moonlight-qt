@@ -3,6 +3,8 @@
 #include <QObject>
 #include <QRect>
 #include <QQmlEngine>
+#include <QMap>
+#include <QVariantMap>
 
 class StreamingPreferences : public QObject
 {
@@ -157,8 +159,30 @@ public:
     Q_PROPERTY(bool keepAwake MEMBER keepAwake NOTIFY keepAwakeChanged)
     Q_PROPERTY(CaptureSysKeysMode captureSysKeysMode MEMBER captureSysKeysMode NOTIFY captureSysKeysModeChanged)
     Q_PROPERTY(Language language MEMBER language NOTIFY languageChanged);
+    Q_PROPERTY(int shortcutModifiers MEMBER shortcutModifiers NOTIFY shortcutsChanged)
+    Q_PROPERTY(QVariantMap shortcutKeys READ getShortcutKeys NOTIFY shortcutsChanged)
 
     Q_INVOKABLE bool retranslate();
+
+    // Configurable special key combos (see settings/shortcuts.h)
+    Q_INVOKABLE static QStringList shortcutActions();
+
+    Q_INVOKABLE static QString shortcutKeyNameFromQtKey(int qtKey);
+
+    Q_INVOKABLE static bool isShortcutModifierQtKey(int qtKey);
+
+    Q_INVOKABLE static QString shortcutDisplayText(int modifiers, const QString& keyName);
+
+    Q_INVOKABLE static QString replaceDefaultShortcut(const QString& text, const QString& defaultKeyName,
+                                                      int modifiers, const QString& keyName);
+
+    // Returns the action already using this key (leaving the shortcuts
+    // unchanged) or an empty string on success.
+    Q_INVOKABLE QString setShortcutKey(const QString& action, const QString& keyName);
+
+    Q_INVOKABLE void resetShortcuts();
+
+    QVariantMap getShortcutKeys() const;
 
     // Directly accessible members for preferences
     int width;
@@ -200,6 +224,8 @@ public:
     Language language;
     CaptureSysKeysMode captureSysKeysMode;
     RendererSelection rendererSelection;
+    int shortcutModifiers;
+    QMap<QString, QString> shortcutKeys;
 
 signals:
     void displayModeChanged();
@@ -238,6 +264,7 @@ signals:
     void keepAwakeChanged();
     void languageChanged();
     void rendererSelectionChanged();
+    void shortcutsChanged();
 
 private:
     explicit StreamingPreferences(QQmlEngine *qmlEngine);

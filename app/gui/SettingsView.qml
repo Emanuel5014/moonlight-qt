@@ -1343,7 +1343,9 @@ Flickable {
                     ToolTip.timeout: 10000
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("This enables seamless mouse control without capturing the client's mouse cursor. It is ideal for remote desktop usage but will not work in most games.") + " " +
-                                  qsTr("You can toggle this while streaming using Ctrl+Alt+Shift+M.") + "\n\n" +
+                                  StreamingPreferences.replaceDefaultShortcut(qsTr("You can toggle this while streaming using Ctrl+Alt+Shift+M."), "M",
+                                                                              StreamingPreferences.shortcutModifiers,
+                                                                              StreamingPreferences.shortcutKeys["toggleMouseMode"]) + "\n\n" +
                                   qsTr("NOTE: Due to a bug in GeForce Experience, this option may not work properly if your host PC has multiple monitors.")
                 }
 
@@ -1460,6 +1462,222 @@ Flickable {
                     checked: StreamingPreferences.reverseScrollDirection
                     onCheckedChanged: {
                         StreamingPreferences.reverseScrollDirection = checked
+                    }
+                }
+            }
+        }
+
+        GroupBox {
+            id: shortcutSettingsGroupBox
+            width: (parent.width - (parent.leftPadding + parent.rightPadding))
+            padding: 12
+            title: "<font color=\"skyblue\">" + qsTr("Keyboard Shortcuts") + "</font>"
+            font.pointSize: 12
+
+            // Action waiting for a new key, or an empty string
+            property string capturingAction: ""
+            property string shortcutMessage: ""
+
+            function actionName(action) {
+                switch (action) {
+                case "quit":
+                    return qsTr("Disconnect from the session")
+                case "ungrabInput":
+                    return qsTr("Toggle mouse and keyboard capture")
+                case "toggleFullScreen":
+                    return qsTr("Toggle full-screen")
+                case "toggleStats":
+                    return qsTr("Toggle performance stats")
+                case "toggleMouseMode":
+                    return qsTr("Toggle mouse mode (games / remote desktop)")
+                case "toggleCursorHide":
+                    return qsTr("Toggle local cursor visibility")
+                case "minimize":
+                    return qsTr("Minimize the stream window")
+                case "pasteText":
+                    return qsTr("Type clipboard text on the host")
+                case "togglePointerRegionLock":
+                    return qsTr("Toggle confining the cursor to the stream window")
+                case "quitAndExit":
+                    return qsTr("Disconnect and exit Moonlight")
+                case "toggleKeyboardGrab":
+                    return qsTr("Toggle capture of system keyboard shortcuts")
+                }
+                return action
+            }
+
+            function assignShortcut(action, keyName) {
+                var conflict = StreamingPreferences.setShortcutKey(action, keyName)
+                if (conflict !== "") {
+                    shortcutMessage = qsTr("%1 is already used by \"%2\".").arg(keyName).arg(actionName(conflict))
+                    return false
+                }
+                shortcutMessage = ""
+                return true
+            }
+
+            Column {
+                anchors.fill: parent
+                spacing: 5
+
+                Label {
+                    width: parent.width
+                    text: qsTr("Modifier keys used by all shortcuts:")
+                    font.pointSize: 12
+                    wrapMode: Text.Wrap
+                }
+
+                Flow {
+                    width: parent.width
+                    spacing: 5
+
+                    Repeater {
+                        model: [
+                            { text: "Ctrl", bit: 1 },
+                            { text: SystemProperties.isDarwin ? "Option" : "Alt", bit: 2 },
+                            { text: "Shift", bit: 4 },
+                            { text: SystemProperties.isDarwin ? "Cmd" : "Win", bit: 8 }
+                        ]
+
+                        CheckBox {
+                            text: modelData.text
+                            font.pointSize: 12
+                            checked: (StreamingPreferences.shortcutModifiers & modelData.bit) !== 0
+
+                            // At least one modifier must stay selected
+                            enabled: !checked || (StreamingPreferences.shortcutModifiers & ~modelData.bit) !== 0
+
+                            onClicked: {
+                                if (checked) {
+                                    StreamingPreferences.shortcutModifiers |= modelData.bit
+                                }
+                                else {
+                                    StreamingPreferences.shortcutModifiers &= ~modelData.bit
+                                }
+
+                                // Clicking breaks the binding, so restore it to follow "Restore defaults"
+                                checked = Qt.binding(function() {
+                                    return (StreamingPreferences.shortcutModifiers & modelData.bit) !== 0
+                                })
+                            }
+                        }
+                    }
+                }
+
+                Label {
+                    width: parent.width
+                    visible: (StreamingPreferences.shortcutModifiers & (StreamingPreferences.shortcutModifiers - 1)) === 0
+                    text: qsTr("Warning: with a single modifier key, these key combinations will no longer reach the host.")
+                    font.pointSize: 10
+                    font.italic: true
+                    color: "orange"
+                    wrapMode: Text.Wrap
+                }
+
+                Repeater {
+                    model: StreamingPreferences.shortcutActions()
+
+                    delegate: RowLayout {
+                        width: parent.width
+                        spacing: 5
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: shortcutSettingsGroupBox.actionName(modelData)
+                            font.pointSize: 11
+                            wrapMode: Text.Wrap
+                        }
+
+                        Label {
+                            text: {
+                                var shortcutText = StreamingPreferences.shortcutDisplayText(StreamingPreferences.shortcutModifiers,
+                                                                                            StreamingPreferences.shortcutKeys[modelData])
+                                return shortcutText !== "" ? shortcutText : qsTr("Disabled")
+                            }
+                            font.pointSize: 11
+                            font.italic: StreamingPreferences.shortcutKeys[modelData] === ""
+                        }
+
+                        Button {
+                            readonly property bool capturing: shortcutSettingsGroupBox.capturingAction === modelData
+
+                            text: capturing ? qsTr("Press a key...") : qsTr("Change")
+                            font.pointSize: 10
+
+                            onClicked: {
+                                shortcutSettingsGroupBox.shortcutMessage = ""
+                                shortcutSettingsGroupBox.capturingAction = modelData
+                                forceActiveFocus()
+                            }
+
+                            onActiveFocusChanged: {
+                                if (!activeFocus && capturing) {
+                                    shortcutSettingsGroupBox.capturingAction = ""
+                                }
+                            }
+
+                            Keys.onPressed: function(event) {
+                                if (!capturing) {
+                                    return
+                                }
+
+                                // While capturing, consume every key so it doesn't trigger
+                                // the button or move the focus.
+                                event.accepted = true
+
+                                if (event.key === Qt.Key_Escape) {
+                                    shortcutSettingsGroupBox.capturingAction = ""
+                                    return
+                                }
+
+                                // Wait for a non-modifier key
+                                if (StreamingPreferences.isShortcutModifierQtKey(event.key)) {
+                                    return
+                                }
+
+                                var keyName = StreamingPreferences.shortcutKeyNameFromQtKey(event.key)
+                                if (keyName === "") {
+                                    shortcutSettingsGroupBox.shortcutMessage =
+                                            qsTr("This key can't be used. Use a letter, a digit, F1-F24, Space, Tab, Backspace, Delete, Insert, Home, End, Page Up or Page Down (without holding modifier keys).")
+                                    return
+                                }
+
+                                if (shortcutSettingsGroupBox.assignShortcut(modelData, keyName)) {
+                                    shortcutSettingsGroupBox.capturingAction = ""
+                                }
+                            }
+                        }
+
+                        Button {
+                            text: qsTr("Disable")
+                            font.pointSize: 10
+                            enabled: StreamingPreferences.shortcutKeys[modelData] !== ""
+
+                            onClicked: {
+                                shortcutSettingsGroupBox.capturingAction = ""
+                                shortcutSettingsGroupBox.assignShortcut(modelData, "")
+                            }
+                        }
+                    }
+                }
+
+                Label {
+                    width: parent.width
+                    visible: shortcutSettingsGroupBox.shortcutMessage !== ""
+                    text: shortcutSettingsGroupBox.shortcutMessage
+                    font.pointSize: 10
+                    color: "orange"
+                    wrapMode: Text.Wrap
+                }
+
+                Button {
+                    text: qsTr("Restore defaults")
+                    font.pointSize: 10
+
+                    onClicked: {
+                        shortcutSettingsGroupBox.capturingAction = ""
+                        shortcutSettingsGroupBox.shortcutMessage = ""
+                        StreamingPreferences.resetShortcuts()
                     }
                 }
             }
@@ -1807,7 +2025,9 @@ Flickable {
                     ToolTip.timeout: 5000
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Display real-time stream performance information while streaming.") + "\n\n" +
-                                  qsTr("You can toggle it at any time while streaming using Ctrl+Alt+Shift+S or Select+L1+R1+X.") + "\n\n" +
+                                  StreamingPreferences.replaceDefaultShortcut(qsTr("You can toggle it at any time while streaming using Ctrl+Alt+Shift+S or Select+L1+R1+X."), "S",
+                                                                              StreamingPreferences.shortcutModifiers,
+                                                                              StreamingPreferences.shortcutKeys["toggleStats"]) + "\n\n" +
                                   qsTr("The performance overlay is not supported on Steam Link or Raspberry Pi.")
                 }
             }

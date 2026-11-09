@@ -1,4 +1,5 @@
 #include "streaming/session.h"
+#include "settings/shortcuts.h"
 
 #include <Limelight.h>
 #include "SDL_compat.h"
@@ -182,6 +183,27 @@ void SdlInputHandler::performSpecialKeyCombo(KeyCombo combo)
     }
 }
 
+bool SdlInputHandler::shortcutModifiersMatch(Uint16 mod)
+{
+    // Left and right modifiers are equivalent. Lock keys (Caps Lock, Num Lock, etc.)
+    // are ignored. The pressed modifiers must exactly match the configured ones.
+    int pressed = 0;
+    if (mod & KMOD_CTRL) {
+        pressed |= ShortcutKeyNames::MOD_CTRL;
+    }
+    if (mod & KMOD_ALT) {
+        pressed |= ShortcutKeyNames::MOD_ALT;
+    }
+    if (mod & KMOD_SHIFT) {
+        pressed |= ShortcutKeyNames::MOD_SHIFT;
+    }
+    if (mod & KMOD_GUI) {
+        pressed |= ShortcutKeyNames::MOD_GUI;
+    }
+
+    return pressed == m_ShortcutModifiers;
+}
+
 void SdlInputHandler::handleKeyEvent(SDL_KeyboardEvent* event)
 {
     short keyCode;
@@ -196,10 +218,7 @@ void SdlInputHandler::handleKeyEvent(SDL_KeyboardEvent* event)
     }
 
     // Check for our special key combos
-    if ((event->state == SDL_PRESSED) &&
-            (event->keysym.mod & KMOD_CTRL) &&
-            (event->keysym.mod & KMOD_ALT) &&
-            (event->keysym.mod & KMOD_SHIFT)) {
+    if ((event->state == SDL_PRESSED) && shortcutModifiersMatch(event->keysym.mod)) {
         // First we test the SDLK combos for matches,
         // that way we ensure that latin keyboard users
         // can match to the key they see on their keyboards.

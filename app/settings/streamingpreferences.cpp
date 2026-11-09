@@ -1,4 +1,5 @@
 #include "streamingpreferences.h"
+#include "shortcuts.h"
 #include "utils.h"
 
 #include <QSettings>
@@ -52,6 +53,8 @@
 #define SER_KEEPAWAKE "keepawake"
 #define SER_LANGUAGE "language"
 #define SER_RENDERER "renderer"
+#define SER_SHORTCUTMODIFIERS "shortcutmodifiers"
+#define SER_SHORTCUTS "shortcuts"
 
 #define CURRENT_DEFAULT_VER 2
 
@@ -171,6 +174,17 @@ void StreamingPreferences::reload()
                                                                                                                  : UIDisplayMode::UI_MAXIMIZED)).toInt());
     language = static_cast<Language>(settings.value(SER_LANGUAGE,
                                                     static_cast<int>(Language::LANG_AUTO)).toInt());
+    shortcutModifiers = settings.value(SER_SHORTCUTMODIFIERS, static_cast<int>(ShortcutKeyNames::MOD_DEFAULT)).toInt() & ShortcutKeyNames::MOD_ALL;
+    if (shortcutModifiers == 0) {
+        shortcutModifiers = ShortcutKeyNames::MOD_DEFAULT;
+    }
+    shortcutKeys.clear();
+    settings.beginGroup(SER_SHORTCUTS);
+    for (const QString& action : ShortcutKeyNames::actions()) {
+        // An empty string means the shortcut is disabled
+        shortcutKeys[action] = settings.value(action, ShortcutKeyNames::defaultKey(action)).toString();
+    }
+    settings.endGroup();
 
 
     // Perform default settings updates as required based on last default version
@@ -362,6 +376,77 @@ void StreamingPreferences::save()
     settings.setValue(SER_SWAPFACEBUTTONS, swapFaceButtons);
     settings.setValue(SER_CAPTURESYSKEYS, captureSysKeysMode);
     settings.setValue(SER_KEEPAWAKE, keepAwake);
+    settings.setValue(SER_SHORTCUTMODIFIERS, shortcutModifiers);
+    settings.beginGroup(SER_SHORTCUTS);
+    for (auto it = shortcutKeys.constBegin(); it != shortcutKeys.constEnd(); ++it) {
+        settings.setValue(it.key(), it.value());
+    }
+    settings.endGroup();
+}
+
+QStringList StreamingPreferences::shortcutActions()
+{
+    return ShortcutKeyNames::actions();
+}
+
+QString StreamingPreferences::shortcutKeyNameFromQtKey(int qtKey)
+{
+    return ShortcutKeyNames::fromQtKey(qtKey);
+}
+
+bool StreamingPreferences::isShortcutModifierQtKey(int qtKey)
+{
+    return ShortcutKeyNames::isModifierQtKey(qtKey);
+}
+
+QString StreamingPreferences::shortcutDisplayText(int modifiers, const QString& keyName)
+{
+    return ShortcutKeyNames::toDisplayText(modifiers, keyName);
+}
+
+QString StreamingPreferences::replaceDefaultShortcut(const QString& text, const QString& defaultKeyName,
+                                                     int modifiers, const QString& keyName)
+{
+    return ShortcutKeyNames::replaceDefaultShortcut(text, defaultKeyName, modifiers, keyName);
+}
+
+QString StreamingPreferences::setShortcutKey(const QString& action, const QString& keyName)
+{
+    if (!shortcutKeys.contains(action)) {
+        Q_ASSERT(false);
+        return QString();
+    }
+
+    // Two actions can't share the same key
+    if (!keyName.isEmpty()) {
+        for (auto it = shortcutKeys.constBegin(); it != shortcutKeys.constEnd(); ++it) {
+            if (it.key() != action && it.value().compare(keyName, Qt::CaseInsensitive) == 0) {
+                return it.key();
+            }
+        }
+    }
+
+    shortcutKeys[action] = keyName;
+    emit shortcutsChanged();
+    return QString();
+}
+
+void StreamingPreferences::resetShortcuts()
+{
+    shortcutModifiers = ShortcutKeyNames::MOD_DEFAULT;
+    for (const QString& action : ShortcutKeyNames::actions()) {
+        shortcutKeys[action] = ShortcutKeyNames::defaultKey(action);
+    }
+    emit shortcutsChanged();
+}
+
+QVariantMap StreamingPreferences::getShortcutKeys() const
+{
+    QVariantMap keys;
+    for (auto it = shortcutKeys.constBegin(); it != shortcutKeys.constEnd(); ++it) {
+        keys[it.key()] = it.value();
+    }
+    return keys;
 }
 
 int StreamingPreferences::getDefaultBitrate(int width, int height, int fps, bool yuv444)

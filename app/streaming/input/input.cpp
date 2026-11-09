@@ -2,6 +2,7 @@
 #include "SDL_compat.h"
 #include "streaming/session.h"
 #include "settings/mappingmanager.h"
+#include "settings/shortcuts.h"
 #include "path.h"
 #include "utils.h"
 
@@ -79,61 +80,49 @@ SdlInputHandler::SdlInputHandler(StreamingPreferences& prefs, int streamWidth, i
     SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS4_RUMBLE, "1");
     SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS5_RUMBLE, "1");
 
-    // Populate special key combo configuration
-    m_SpecialKeyCombos[KeyComboQuit].keyCombo = KeyComboQuit;
-    m_SpecialKeyCombos[KeyComboQuit].keyCode = SDLK_q;
-    m_SpecialKeyCombos[KeyComboQuit].scanCode = SDL_SCANCODE_Q;
-    m_SpecialKeyCombos[KeyComboQuit].enabled = true;
+    // Populate special key combo configuration from the user's shortcut preferences
+    const struct {
+        KeyCombo keyCombo;
+        const char* action;
+        bool allowed;
+    } keyComboConfig[] = {
+        { KeyComboQuit, "quit", true },
+        { KeyComboUngrabInput, "ungrabInput", WMUtils::isRunningDesktopEnvironment() },
+        { KeyComboToggleFullScreen, "toggleFullScreen", WMUtils::isRunningDesktopEnvironment() },
+        { KeyComboToggleStatsOverlay, "toggleStats", true },
+        { KeyComboToggleMouseMode, "toggleMouseMode", true },
+        { KeyComboToggleCursorHide, "toggleCursorHide", true },
+        { KeyComboToggleMinimize, "minimize", WMUtils::isRunningDesktopEnvironment() },
+        { KeyComboPasteText, "pasteText", true },
+        { KeyComboTogglePointerRegionLock, "togglePointerRegionLock", true },
+        { KeyComboQuitAndExit, "quitAndExit", true },
+        { KeyComboToggleKeyboardGrab, "toggleKeyboardGrab", WMUtils::isRunningDesktopEnvironment() },
+    };
+    static_assert(sizeof(keyComboConfig) / sizeof(keyComboConfig[0]) == KeyComboMax, "Missing key combo configuration");
 
-    m_SpecialKeyCombos[KeyComboUngrabInput].keyCombo = KeyComboUngrabInput;
-    m_SpecialKeyCombos[KeyComboUngrabInput].keyCode = SDLK_z;
-    m_SpecialKeyCombos[KeyComboUngrabInput].scanCode = SDL_SCANCODE_Z;
-    m_SpecialKeyCombos[KeyComboUngrabInput].enabled = WMUtils::isRunningDesktopEnvironment();
+    for (const auto& config : keyComboConfig) {
+        QByteArray keyName = prefs.shortcutKeys.value(config.action).toUtf8();
+        SDL_Scancode scanCode = keyName.isEmpty() ? SDL_SCANCODE_UNKNOWN : SDL_GetScancodeFromName(keyName.constData());
+        SDL_Keycode keyCode;
 
-    m_SpecialKeyCombos[KeyComboToggleFullScreen].keyCombo = KeyComboToggleFullScreen;
-    m_SpecialKeyCombos[KeyComboToggleFullScreen].keyCode = SDLK_x;
-    m_SpecialKeyCombos[KeyComboToggleFullScreen].scanCode = SDL_SCANCODE_X;
-    m_SpecialKeyCombos[KeyComboToggleFullScreen].enabled = WMUtils::isRunningDesktopEnvironment();
+        // Single character key names are letters and digits. We use the character itself rather
+        // than SDL_GetKeyFromScancode() so the SDLK test in handleKeyEvent() matches the key the
+        // user sees on a latin keyboard regardless of layout (as with the original fixed SDLK_q,
+        // SDLK_z, etc.). All other supported keys don't depend on the keyboard layout.
+        if (keyName.length() == 1) {
+            keyCode = (SDL_Keycode)QChar::fromLatin1(keyName.at(0)).toLower().unicode();
+        }
+        else {
+            keyCode = SDL_GetKeyFromScancode(scanCode);
+        }
 
-    m_SpecialKeyCombos[KeyComboToggleStatsOverlay].keyCombo = KeyComboToggleStatsOverlay;
-    m_SpecialKeyCombos[KeyComboToggleStatsOverlay].keyCode = SDLK_s;
-    m_SpecialKeyCombos[KeyComboToggleStatsOverlay].scanCode = SDL_SCANCODE_S;
-    m_SpecialKeyCombos[KeyComboToggleStatsOverlay].enabled = true;
+        m_SpecialKeyCombos[config.keyCombo].keyCombo = config.keyCombo;
+        m_SpecialKeyCombos[config.keyCombo].keyCode = keyCode;
+        m_SpecialKeyCombos[config.keyCombo].scanCode = scanCode;
+        m_SpecialKeyCombos[config.keyCombo].enabled = config.allowed && scanCode != SDL_SCANCODE_UNKNOWN;
+    }
 
-    m_SpecialKeyCombos[KeyComboToggleMouseMode].keyCombo = KeyComboToggleMouseMode;
-    m_SpecialKeyCombos[KeyComboToggleMouseMode].keyCode = SDLK_m;
-    m_SpecialKeyCombos[KeyComboToggleMouseMode].scanCode = SDL_SCANCODE_M;
-    m_SpecialKeyCombos[KeyComboToggleMouseMode].enabled = true;
-
-    m_SpecialKeyCombos[KeyComboToggleCursorHide].keyCombo = KeyComboToggleCursorHide;
-    m_SpecialKeyCombos[KeyComboToggleCursorHide].keyCode = SDLK_c;
-    m_SpecialKeyCombos[KeyComboToggleCursorHide].scanCode = SDL_SCANCODE_C;
-    m_SpecialKeyCombos[KeyComboToggleCursorHide].enabled = true;
-
-    m_SpecialKeyCombos[KeyComboToggleMinimize].keyCombo = KeyComboToggleMinimize;
-    m_SpecialKeyCombos[KeyComboToggleMinimize].keyCode = SDLK_d;
-    m_SpecialKeyCombos[KeyComboToggleMinimize].scanCode = SDL_SCANCODE_D;
-    m_SpecialKeyCombos[KeyComboToggleMinimize].enabled = WMUtils::isRunningDesktopEnvironment();
-
-    m_SpecialKeyCombos[KeyComboPasteText].keyCombo = KeyComboPasteText;
-    m_SpecialKeyCombos[KeyComboPasteText].keyCode = SDLK_v;
-    m_SpecialKeyCombos[KeyComboPasteText].scanCode = SDL_SCANCODE_V;
-    m_SpecialKeyCombos[KeyComboPasteText].enabled = true;
-
-    m_SpecialKeyCombos[KeyComboTogglePointerRegionLock].keyCombo = KeyComboTogglePointerRegionLock;
-    m_SpecialKeyCombos[KeyComboTogglePointerRegionLock].keyCode = SDLK_l;
-    m_SpecialKeyCombos[KeyComboTogglePointerRegionLock].scanCode = SDL_SCANCODE_L;
-    m_SpecialKeyCombos[KeyComboTogglePointerRegionLock].enabled = true;
-
-    m_SpecialKeyCombos[KeyComboQuitAndExit].keyCombo = KeyComboQuitAndExit;
-    m_SpecialKeyCombos[KeyComboQuitAndExit].keyCode = SDLK_e;
-    m_SpecialKeyCombos[KeyComboQuitAndExit].scanCode = SDL_SCANCODE_E;
-    m_SpecialKeyCombos[KeyComboQuitAndExit].enabled = true;
-
-    m_SpecialKeyCombos[KeyComboToggleKeyboardGrab].keyCombo = KeyComboToggleKeyboardGrab;
-    m_SpecialKeyCombos[KeyComboToggleKeyboardGrab].keyCode = SDLK_k;
-    m_SpecialKeyCombos[KeyComboToggleKeyboardGrab].scanCode = SDL_SCANCODE_K;
-    m_SpecialKeyCombos[KeyComboToggleKeyboardGrab].enabled = WMUtils::isRunningDesktopEnvironment();
+    m_ShortcutModifiers = prefs.shortcutModifiers != 0 ? prefs.shortcutModifiers : (int)ShortcutKeyNames::MOD_DEFAULT;
 
     m_OldIgnoreDevices = SDL_GetHint(SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES);
     m_OldIgnoreDevicesExcept = SDL_GetHint(SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT);
