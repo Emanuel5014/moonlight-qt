@@ -1005,6 +1005,51 @@ Flickable {
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("This will close the app or game you are streaming when you end your stream. You will lose any unsaved progress!")
                 }
+
+                CheckBox {
+                    id: vpnTreatAsLanCheck
+                    hoverEnabled: true
+                    width: parent.width
+                    text: qsTr("Treat VPN connections (like WireGuard) as a local network")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.vpnMode === StreamingPreferences.VPN_TREAT_AS_LAN
+                    onCheckedChanged: {
+                        StreamingPreferences.vpnMode = checked ? StreamingPreferences.VPN_TREAT_AS_LAN : StreamingPreferences.VPN_AUTO
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 10000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("By default, streams over a VPN are treated as Internet streams and use small 1024 byte video packets.") + " " +
+                                  qsTr("Enable this for a VPN to a host on your own network to use larger packets that still fit the VPN tunnel.")
+                }
+
+                Row {
+                    spacing: 5
+                    visible: vpnTreatAsLanCheck.checked
+
+                    Label {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("VPN tunnel MTU:")
+                        font.pointSize: 12
+                    }
+
+                    SpinBox {
+                        id: vpnTunnelMtuSpinBox
+                        from: 1280
+                        to: 1500
+                        editable: true
+                        value: StreamingPreferences.vpnTunnelMtu
+                        onValueModified: {
+                            StreamingPreferences.vpnTunnelMtu = value
+                        }
+
+                        ToolTip.delay: 1000
+                        ToolTip.timeout: 10000
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("MTU of the VPN network interface. The default for WireGuard is 1420.")
+                    }
+                }
             }
         }
 

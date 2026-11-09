@@ -47,6 +47,32 @@
 
 #define CONN_TEST_SERVER "qt.conntest.moonlight-stream.org"
 
+// Largest video packet size that fits in a single datagram inside a VPN tunnel with the given MTU.
+//
+// The UDP payload of a video packet is the packet size we request plus a 16 byte RTP header
+// (MAX_RTP_HEADER_SIZE: the host always reserves 12 bytes of RTP header + 4 reserved bytes,
+// see video_packet_raw_t in Sunshine/Apollo stream.cpp). When video encryption is enabled,
+// moonlight-common-c already subtracts the 32 byte ENC_VIDEO_HEADER from the size it sends to
+// the host (SdpGenerator.c), so the datagram doesn't grow. On top of that we have the UDP header
+// (8 bytes) and the inner IP header, for which we assume IPv6 (40 bytes, worst case vs 20 for IPv4).
+// The MTU of a WireGuard interface already accounts for the outer tunnel headers.
+//
+// moonlight-common-c rounds the packet size down to a multiple of 16 for FEC (Connection.c),
+// so we do the same here to log the real value. With the default WireGuard MTU of 1420 this
+// gives 1420 - 40 - 8 - 16 = 1356 -> 1344 bytes.
+static int getVpnPacketSize(int tunnelMtu)
+{
+    const int k_RtpHeaderSize = 16; // MAX_RTP_HEADER_SIZE
+    const int k_UdpHeaderSize = 8;
+    const int k_Ipv6HeaderSize = 40;
+
+    int packetSize = tunnelMtu - k_Ipv6HeaderSize - k_UdpHeaderSize - k_RtpHeaderSize;
+    packetSize -= packetSize % 16;
+
+    // Never exceed our default LAN packet size or go below the remote cap
+    return qBound(1024, packetSize, 1392);
+}
+
 CONNECTION_LISTENER_CALLBACKS Session::k_ConnCallbacks = {
     Session::clStageStarting,
     nullptr,
@@ -1686,10 +1712,24 @@ bool Session::startConnectionAsync()
             m_StreamConfig.streamingRemotely = STREAM_CFG_LOCAL;
             break;
         case NvComputer::RI_VPN:
-            // It looks like our route to this PC is over a VPN, so cap at 1024 bytes.
-            // Treat it as remote even if the target address is in RFC 1918 address space.
-            m_StreamConfig.streamingRemotely = STREAM_CFG_REMOTE;
-            m_StreamConfig.packetSize = 1024;
+            if (m_Preferences->vpnMode == StreamingPreferences::VPN_TREAT_AS_LAN) {
+                // The user trusts this VPN like a LAN (e.g. WireGuard to a host at home), so use
+                // local streaming and the largest video packets that won't fragment in the tunnel.
+                m_StreamConfig.streamingRemotely = STREAM_CFG_LOCAL;
+                m_StreamConfig.packetSize = getVpnPacketSize(m_Preferences->vpnTunnelMtu);
+                SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                            "VPN detected: treating as LAN with %d byte video packets (tunnel MTU %d)",
+                            m_StreamConfig.packetSize,
+                            m_Preferences->vpnTunnelMtu);
+            }
+            else {
+                // It looks like our route to this PC is over a VPN, so cap at 1024 bytes.
+                // Treat it as remote even if the target address is in RFC 1918 address space.
+                m_StreamConfig.streamingRemotely = STREAM_CFG_REMOTE;
+                m_StreamConfig.packetSize = 1024;
+                SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                            "VPN detected: treating as remote with 1024 byte video packets");
+            }
             break;
         default:
             // If we don't have reachability info, let moonlight-common-c decide.
