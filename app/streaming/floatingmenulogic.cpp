@@ -376,7 +376,9 @@ bool MenuController::escDown()
         m_SwallowEscUp = true;
         return true;
     }
-    return false;
+
+    // Key repeats of the press that closed the panel
+    return m_SwallowEscUp;
 }
 
 bool MenuController::escUp()
@@ -692,6 +694,16 @@ static void escUpConsumedOnlyAfterConsumedDown()
     FM_CHECK(!c.escUp());
 }
 
+static void escRepeatsAfterClosingAreConsumed()
+{
+    MenuController c = makeController();
+    c.open();
+    FM_CHECK(c.escDown());
+    FM_CHECK(c.escDown()); // key repeat, panel already closed
+    FM_CHECK(c.escUp());
+    FM_CHECK(!c.escDown());
+}
+
 static void hiddenButtonIgnoresClicks()
 {
     MenuController c = makeController();
@@ -727,6 +739,7 @@ int floatingMenuSelfTest()
     clickOutsideOpenClosesAndConsumesBoth();
     otherButtonsConsumedOnlyOverMenu();
     escUpConsumedOnlyAfterConsumedDown();
+    escRepeatsAfterClosingAreConsumed();
     hiddenButtonIgnoresClicks();
     hoverMarksRedraw();
 

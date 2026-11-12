@@ -15,6 +15,8 @@
 #include "video/slvid.h"
 #endif
 
+#include "floatingmenu.h"
+
 #ifdef Q_OS_WIN32
 // Scaling the icon down on Win32 looks dreadful, so render at lower res
 #define ICON_SIZE 32
@@ -604,6 +606,7 @@ Session::Session(NvComputer* computer, NvApp& app, StreamingPreferences *prefere
       m_QtWindow(nullptr),
       m_UnexpectedTermination(true), // Failure prior to streaming is unexpected
       m_InputHandler(nullptr),
+      m_FloatingMenu(nullptr),
       m_MouseEmulationRefCount(0),
       m_FlushingWindowEventsRef(0),
       m_ShouldExit(false),
@@ -2017,6 +2020,12 @@ void Session::exec()
     // Toggle the stats overlay if requested by the user
     m_OverlayManager.setOverlayState(Overlay::OverlayDebug, m_Preferences->showPerformanceOverlay);
 
+    // streamfork: floating stream menu. It shows up once the renderer is created.
+    m_FloatingMenu = new FloatingMenu(this, m_Window);
+    if (!m_Preferences->floatingMenuEnabled) {
+        m_FloatingMenu->setHidden(true);
+    }
+
     // Switch to async logging mode when we enter the SDL loop
     StreamUtils::enterAsyncLoggingMode();
 
@@ -2055,6 +2064,16 @@ void Session::exec()
             continue;
         }
 #endif
+        // streamfork: give the floating menu the first look at input events
+        if (m_FloatingMenu != nullptr) {
+            if (event.type == SDL_WINDOWEVENT) {
+                m_FloatingMenu->onWindowChanged();
+            }
+            if (m_FloatingMenu->handleEvent(event)) {
+                continue;
+            }
+        }
+
         switch (event.type) {
         case SDL_QUIT:
             SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
@@ -2288,6 +2307,11 @@ void Session::exec()
                     goto DispatchDeferredCleanup;
                 }
 
+                // streamfork: the floating menu needs to be published to the new renderer
+                if (m_FloatingMenu != nullptr) {
+                    m_FloatingMenu->onRendererChanged(m_VideoDecoder->isPositionedOverlaySupported());
+                }
+
                 // As of SDL 2.0.12, SDL_RecreateWindow() doesn't carry over mouse capture
                 // or mouse hiding state to the new window. By capturing after the decoder
                 // is set up, this ensures the window re-creation is already done.
@@ -2392,6 +2416,10 @@ DispatchDeferredCleanup:
 
     // Raise any keys that are still down
     m_InputHandler->raiseAllKeys();
+
+    // streamfork: the floating menu uses the input handler
+    delete m_FloatingMenu;
+    m_FloatingMenu = nullptr;
 
     // Destroy the input handler now. This must be destroyed
     // before allowwing the UI to continue execution or it could
