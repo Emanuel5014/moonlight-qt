@@ -172,6 +172,7 @@ private:
         KeyComboTogglePointerRegionLock,
         KeyComboQuitAndExit,
         KeyComboToggleKeyboardGrab,
+        KeyComboToggleFloatingMenu, // streamfork spec 08
         KeyComboMax
     };
 

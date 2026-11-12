@@ -107,6 +107,7 @@ SdlInputHandler::SdlInputHandler(StreamingPreferences& prefs, int streamWidth, i
         { KeyComboTogglePointerRegionLock, "togglePointerRegionLock", true },
         { KeyComboQuitAndExit, "quitAndExit", true },
         { KeyComboToggleKeyboardGrab, "toggleKeyboardGrab", WMUtils::isRunningDesktopEnvironment() },
+        { KeyComboToggleFloatingMenu, "toggleFloatingMenu", true },
     };
     static_assert(sizeof(keyComboConfig) / sizeof(keyComboConfig[0]) == KeyComboMax, "Missing key combo configuration");
 

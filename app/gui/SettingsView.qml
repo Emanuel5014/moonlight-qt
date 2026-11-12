@@ -1367,6 +1367,22 @@ Flickable {
                 }
 
                 CheckBox {
+                    id: floatingMenuCheck
+                    width: parent.width
+                    text: qsTr("Show the stream menu button")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.floatingMenuEnabled
+                    onCheckedChanged: {
+                        StreamingPreferences.floatingMenuEnabled = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 5000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Shows a button during the stream that opens a menu with stream options. The menu shortcut works even when the button is hidden.")
+                }
+
+                CheckBox {
                     id: configurationWarningsCheck
                     width: parent.width
                     text: qsTr("Show configuration warnings")
@@ -1725,6 +1741,8 @@ Flickable {
                     return qsTr("Disconnect and exit Moonlight")
                 case "toggleKeyboardGrab":
                     return qsTr("Toggle capture of system keyboard shortcuts")
+                case "toggleFloatingMenu":
+                    return qsTr("Open or close the stream menu")
                 }
                 return action
             }

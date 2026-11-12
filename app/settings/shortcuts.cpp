@@ -18,6 +18,7 @@ static const struct {
     { "togglePointerRegionLock", "L" },
     { "quitAndExit", "E" },
     { "toggleKeyboardGrab", "K" },
+    { "toggleFloatingMenu", "O" },
 };
 
 QStringList ShortcutKeyNames::actions()

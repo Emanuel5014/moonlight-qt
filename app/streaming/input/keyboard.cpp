@@ -1,4 +1,5 @@
 #include "streaming/session.h"
+#include "streaming/floatingmenu.h"
 #include "settings/shortcuts.h"
 
 #include <Limelight.h>
@@ -176,6 +177,19 @@ void SdlInputHandler::performSpecialKeyCombo(KeyCombo combo)
         }
 
         updateKeyboardGrabState();
+        break;
+
+    case KeyComboToggleFloatingMenu:
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Detected floating menu toggle combo");
+
+        if (Session::get()->m_FloatingMenu == nullptr) {
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                        "Floating menu is not supported by this renderer");
+        }
+        else {
+            Session::get()->m_FloatingMenu->toggle();
+        }
         break;
 
     default:
