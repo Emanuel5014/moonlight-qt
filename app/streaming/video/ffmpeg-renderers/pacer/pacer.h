@@ -44,6 +44,10 @@ public:
 
     void renderOnMainThread();
 
+    // streamfork: presents the last frame again so overlay changes show up
+    // even when no new frame arrives (static host desktop). Main thread only.
+    void redrawLastFrame();
+
 private:
     static int vsyncThread(void* context);
 
@@ -54,6 +58,8 @@ private:
     void enqueueFrameForRenderingAndUnlock(AVFrame* frame);
 
     void renderFrame(AVFrame* frame);
+
+    void renderLastFrameAgain();
 
     void dropFrameForEnqueue(QQueue<AVFrame*>& queue);
 
@@ -68,6 +74,7 @@ private:
     SDL_Thread* m_RenderThread;
     SDL_Thread* m_VsyncThread;
     AVFrame* m_DeferredFreeFrame;
+    SDL_atomic_t m_RedrawRequested;
     bool m_Stopping;
 
     IVsyncSource* m_VsyncSource;
