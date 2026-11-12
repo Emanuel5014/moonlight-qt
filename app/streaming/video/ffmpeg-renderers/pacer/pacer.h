@@ -59,6 +59,8 @@ private:
 
     void renderFrame(AVFrame* frame);
 
+    bool canRenderLastFrameAgain();
+
     void renderLastFrameAgain();
 
     void dropFrameForEnqueue(QQueue<AVFrame*>& queue);

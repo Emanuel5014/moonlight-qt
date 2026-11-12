@@ -73,6 +73,7 @@ FloatingMenu::FloatingMenu(Session* session, SDL_Window* window) :
     m_Window(window),
     m_Metrics(scaledMetrics(1.0f)),
     m_Scale(1.0f),
+    m_UiScale(1.0f),
     m_WinW(0),
     m_WinH(0),
     m_Supported(false),
@@ -144,11 +145,11 @@ void FloatingMenu::toggle()
 void FloatingMenu::onWindowChanged()
 {
     int oldW = m_WinW, oldH = m_WinH;
-    float oldScale = m_Scale;
+    float oldScale = m_Scale, oldUiScale = m_UiScale;
 
     updateWindowMetrics();
 
-    if (oldW != m_WinW || oldH != m_WinH || oldScale != m_Scale) {
+    if (oldW != m_WinW || oldH != m_WinH || oldScale != m_Scale || oldUiScale != m_UiScale) {
         publish(true);
     }
 }
@@ -182,9 +183,14 @@ bool FloatingMenu::handleEvent(const SDL_Event& event)
     switch (event.type) {
     case SDL_MOUSEBUTTONDOWN:
     case SDL_MOUSEBUTTONUP:
-        // Touch is out of scope, and with a captured relative mouse the
-        // cursor position is meaningless
-        if (event.button.which == SDL_TOUCH_MOUSEID || SDL_GetRelativeMouseMode()) {
+        // Touch is out of scope. With a captured relative mouse the cursor
+        // position is meaningless, but the release of a press we consumed
+        // (e.g. the click that closed the panel and recaptured the mouse)
+        // must not reach the host either.
+        if (event.button.which == SDL_TOUCH_MOUSEID) {
+            return false;
+        }
+        if (SDL_GetRelativeMouseMode() && (event.type == SDL_MOUSEBUTTONDOWN || !m_Controller.hasPress())) {
             return false;
         }
         if (event.button.button == SDL_BUTTON_LEFT) {
@@ -193,7 +199,9 @@ bool FloatingMenu::handleEvent(const SDL_Event& event)
                            m_Controller.mouseUp(toPixels(event.button.x), toPixels(event.button.y));
         }
         else {
-            consumed = m_Controller.otherButton(toPixels(event.button.x), toPixels(event.button.y));
+            consumed = event.type == SDL_MOUSEBUTTONDOWN ?
+                           m_Controller.otherButtonDown(event.button.button, toPixels(event.button.x), toPixels(event.button.y)) :
+                           m_Controller.otherButtonUp(event.button.button, toPixels(event.button.x), toPixels(event.button.y));
         }
         break;
 
@@ -262,12 +270,23 @@ void FloatingMenu::updateWindowMetrics()
     SDL_GetWindowSize(m_Window, &pointsW, &pointsH);
     SDL_GetWindowSizeInPixels(m_Window, &m_WinW, &m_WinH);
 
+    // Window points to pixels (2 on Retina displays, 1 on Windows)
     m_Scale = pointsW > 0 ? (float)m_WinW / pointsW : 1.0f;
     if (m_Scale <= 0) {
         m_Scale = 1.0f;
     }
 
-    m_Metrics = scaledMetrics(m_Scale);
+    // Size of the menu itself. Windows reports pixels as points, so follow
+    // the display scaling (DPI) there to keep the menu readable on HiDPI.
+    m_UiScale = m_Scale;
+#ifdef Q_OS_WIN32
+    float hdpi = 0;
+    if (SDL_GetDisplayDPI(SDL_GetWindowDisplayIndex(m_Window), nullptr, &hdpi, nullptr) == 0 && hdpi > 96.0f) {
+        m_UiScale = hdpi / 96.0f;
+    }
+#endif
+
+    m_Metrics = scaledMetrics(m_UiScale);
     m_Controller.setWindow(m_WinW, m_WinH, m_Metrics);
 }
 
@@ -288,9 +307,9 @@ void FloatingMenu::runCommands()
             break;
         case CommandKind::MoveFinished:
         {
-            StreamingPreferences* prefs = StreamingPreferences::get();
-            m_Controller.getPosition(prefs->floatingMenuPosX, prefs->floatingMenuPosY);
-            prefs->save();
+            double posX, posY;
+            m_Controller.getPosition(posX, posY);
+            StreamingPreferences::get()->saveFloatingMenuPosition(posX, posY);
             m_Dirty = true;
             break;
         }
@@ -500,7 +519,7 @@ bool FloatingMenu::rowEnabled(Row row) const
 
 void FloatingMenu::ensureFont()
 {
-    int size = std::max(1, (int)std::lround(FONT_SIZE * m_Scale));
+    int size = std::max(1, (int)std::lround(FONT_SIZE * m_UiScale));
     if (m_Font != nullptr && m_FontSize == size) {
         return;
     }
@@ -555,7 +574,7 @@ SDL_Surface* FloatingMenu::render(int& x, int& y)
     SDL_FillRect(surface, nullptr, 0);
 
     auto scaled = [this](int logical) {
-        return std::max(1, (int)std::lround(logical * m_Scale));
+        return std::max(1, (int)std::lround(logical * m_UiScale));
     };
 
     if (buttonVisible) {
@@ -641,10 +660,10 @@ void FloatingMenu::publish(bool force)
     m_LastPublishTicks = now;
 
     // Overlays only show up with a presented frame, and the host may not be
-    // sending any (static desktop)
-    SDL_LockMutex(m_Session->m_DecoderLock);
+    // sending any (static desktop).
+    // NB: No m_DecoderLock here: the decoder is only created and destroyed on
+    // this thread, and holding it makes the decode thread drop decode units.
     if (m_Session->m_VideoDecoder != nullptr) {
         m_Session->m_VideoDecoder->redrawLastFrame();
     }
-    SDL_UnlockMutex(m_Session->m_DecoderLock);
 }

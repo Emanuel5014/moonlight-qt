@@ -103,9 +103,13 @@ public:
     // Left mouse button
     bool mouseDown(int x, int y);
     bool mouseUp(int x, int y);
-    // Any other mouse button, pressed or released: consumed over the
-    // menu, never acted upon
-    bool otherButton(int x, int y);
+    // Any other mouse button (SDL button index): a press is consumed over
+    // the menu, or anywhere while the panel is open (which closes it), and
+    // never acted upon; a release is consumed exactly when its press was
+    bool otherButtonDown(int button, int x, int y);
+    bool otherButtonUp(int button, int x, int y);
+    // A press the menu consumed hasn't been released yet
+    bool hasPress() const;
     bool mouseMotion(int x, int y);
     bool mouseWheel(int x, int y, int dy);
     bool escDown();
@@ -141,6 +145,7 @@ private:
     Rect m_DragStart;
     Rect m_DragRect;
     bool m_SwallowEscUp;
+    unsigned int m_OtherButtonsPressed; // Bit (button - 1) per consumed press
 
     std::vector<Command> m_Commands;
     bool m_Redraw;

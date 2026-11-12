@@ -186,6 +186,7 @@ MenuController::MenuController() :
     m_Dragging(false),
     m_DragStart{}, m_DragRect{},
     m_SwallowEscUp(false),
+    m_OtherButtonsPressed(0),
     m_Redraw(true)
 {
 }
@@ -323,9 +324,43 @@ bool MenuController::mouseUp(int x, int y)
     }
 }
 
-bool MenuController::otherButton(int x, int y)
+static unsigned int buttonBit(int button)
 {
-    return overMenu(x, y);
+    return (button >= 1 && button <= 32) ? 1u << (button - 1) : 0;
+}
+
+bool MenuController::otherButtonDown(int button, int x, int y)
+{
+    bool consumed;
+    if (overMenu(x, y)) {
+        consumed = true;
+    }
+    else if (m_Open) {
+        // Like the left button, a press outside the panel closes it
+        close();
+        consumed = true;
+    }
+    else {
+        consumed = false;
+    }
+
+    if (consumed) {
+        m_OtherButtonsPressed |= buttonBit(button);
+    }
+    return consumed;
+}
+
+bool MenuController::otherButtonUp(int button, int, int)
+{
+    unsigned int bit = buttonBit(button);
+    bool consumed = (m_OtherButtonsPressed & bit) != 0;
+    m_OtherButtonsPressed &= ~bit;
+    return consumed;
+}
+
+bool MenuController::hasPress() const
+{
+    return m_Press != Press::None || m_OtherButtonsPressed != 0;
 }
 
 bool MenuController::mouseMotion(int x, int y)
@@ -669,16 +704,46 @@ static void clickOutsideOpenClosesAndConsumesBoth()
     FM_CHECK(!c.mouseMotion(100, 900));
 }
 
-static void otherButtonsConsumedOnlyOverMenu()
+static void otherButtonsTrackedPerPress()
 {
     MenuController c = makeController();
-    FM_CHECK(c.otherButton(960, 20));
-    FM_CHECK(!c.otherButton(100, 900));
+    // Closed: a press outside is the host's, wherever it is released
+    FM_CHECK(!c.otherButtonDown(3, 100, 900));
+    FM_CHECK(!c.otherButtonUp(3, 960, 20));
+    // A press on the button is ours, wherever it is released
+    FM_CHECK(c.otherButtonDown(3, 960, 20));
+    FM_CHECK(c.otherButtonUp(3, 100, 900));
+    FM_CHECK(!c.isOpen());
+
+    // Open: no action on rows, and a press outside closes like the left button
     c.open();
     c.takeCommands();
-    FM_CHECK(c.otherButton(950, rowY(2)));
+    FM_CHECK(c.otherButtonDown(2, 950, rowY(2)));
     FM_CHECK(c.takeCommands().empty());
     FM_CHECK(c.isOpen());
+    FM_CHECK(c.otherButtonUp(2, 950, rowY(2)));
+    FM_CHECK(c.otherButtonDown(3, 100, 900));
+    FM_CHECK(!c.isOpen());
+    FM_CHECK(c.otherButtonUp(3, 100, 900));
+}
+
+static void hasPressUntilRelease()
+{
+    MenuController c = makeController();
+    c.mouseDown(100, 500);
+    FM_CHECK(!c.hasPress());
+    c.mouseUp(100, 500);
+
+    c.open();
+    FM_CHECK(c.mouseDown(100, 900));
+    FM_CHECK(c.hasPress());
+    FM_CHECK(c.mouseUp(100, 900));
+    FM_CHECK(!c.hasPress());
+
+    FM_CHECK(c.otherButtonDown(3, 960, 20));
+    FM_CHECK(c.hasPress());
+    FM_CHECK(c.otherButtonUp(3, 960, 20));
+    FM_CHECK(!c.hasPress());
 }
 
 static void escUpConsumedOnlyAfterConsumedDown()
@@ -737,7 +802,8 @@ int floatingMenuSelfTest()
     clickRowActivates();
     choiceRowStepsByHalfAndWheel();
     clickOutsideOpenClosesAndConsumesBoth();
-    otherButtonsConsumedOnlyOverMenu();
+    otherButtonsTrackedPerPress();
+    hasPressUntilRelease();
     escUpConsumedOnlyAfterConsumedDown();
     escRepeatsAfterClosingAreConsumed();
     hiddenButtonIgnoresClicks();

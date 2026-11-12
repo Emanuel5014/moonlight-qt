@@ -74,7 +74,8 @@ private:
     FloatingMenuLogic::MenuController m_Controller;
     FloatingMenuLogic::Metrics m_Metrics;
     std::vector<Row> m_Rows;
-    float m_Scale;
+    float m_Scale;   // Window pixels per point (input coordinates)
+    float m_UiScale; // Menu size multiplier
     int m_WinW;
     int m_WinH;
     bool m_Supported;

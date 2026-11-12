@@ -202,6 +202,10 @@ public:
 
     Q_INVOKABLE bool retranslate();
 
+    // streamfork: saves only the floating menu position (not the other,
+    // possibly command-line overridden, values)
+    void saveFloatingMenuPosition(double posX, double posY);
+
     // Configurable special key combos (see settings/shortcuts.h)
     Q_INVOKABLE static QStringList shortcutActions();
 

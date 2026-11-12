@@ -125,11 +125,17 @@ void Pacer::redrawLastFrame()
     }
 }
 
-void Pacer::renderLastFrameAgain()
+bool Pacer::canRenderLastFrameAgain()
 {
     // m_DeferredFreeFrame is the last rendered frame, kept alive until the next one.
     // It is only touched on the render thread (or the main thread without one).
-    if (m_DeferredFreeFrame == nullptr) {
+    // Renderers that take the buffers (av_frame_move_ref) leave it empty.
+    return m_DeferredFreeFrame != nullptr && m_DeferredFreeFrame->buf[0] != nullptr;
+}
+
+void Pacer::renderLastFrameAgain()
+{
+    if (!canRenderLastFrameAgain()) {
         return;
     }
 
@@ -199,8 +205,11 @@ int Pacer::renderThread(void* context)
             // the not empty condition
             QMutexLocker locker(&me->m_FrameQueueLock);
 
-            // Wait for a frame to be ready to render (or a redraw request)
-            while (!me->m_Stopping && me->m_RenderQueue.isEmpty() && !SDL_AtomicGet(&me->m_RedrawRequested)) {
+            // Wait for a frame to be ready to render (or a redraw request we can honor).
+            // NB: waitToRender() must be followed by renderFrame(), so we never loop
+            // back to it without rendering something.
+            while (!me->m_Stopping && me->m_RenderQueue.isEmpty() &&
+                   !(SDL_AtomicGet(&me->m_RedrawRequested) && me->canRenderLastFrameAgain())) {
                 me->m_RenderQueueNotEmpty.wait(&me->m_FrameQueueLock);
             }
 

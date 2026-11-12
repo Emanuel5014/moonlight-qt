@@ -361,6 +361,16 @@ QString StreamingPreferences::getSuffixFromLanguage(StreamingPreferences::Langua
     }
 }
 
+void StreamingPreferences::saveFloatingMenuPosition(double posX, double posY)
+{
+    QSettings settings;
+
+    floatingMenuPosX = posX;
+    floatingMenuPosY = posY;
+    settings.setValue(SER_FLOATINGMENUPOSX, floatingMenuPosX);
+    settings.setValue(SER_FLOATINGMENUPOSY, floatingMenuPosY);
+}
+
 void StreamingPreferences::save()
 {
     QSettings settings;
