@@ -73,6 +73,79 @@ T stepValue(const std::vector<T>& steps, const T& current, int delta)
     return current;
 }
 
+enum class CommandKind { ActivateRow, StepRow, MoveFinished, Opened, Closed };
+
+struct Command {
+    CommandKind kind;
+    int row;   // ActivateRow, StepRow
+    int delta; // StepRow: -1 or +1
+};
+
+// Decides which mouse and Esc events belong to the menu (returning true
+// means the event is consumed and must not reach the host) and turns
+// them into commands. Coordinates are window pixels.
+class MenuController
+{
+public:
+    MenuController();
+
+    void setWindow(int winW, int winH, const Metrics& m);
+    void setPosition(double fracX, double fracY);
+    void getPosition(double& fracX, double& fracY) const;
+    // One entry per row: true for choice rows (split click, wheel)
+    void setRows(const std::vector<bool>& isChoiceRow);
+    void setButtonVisible(bool visible);
+
+    bool isOpen() const;
+    void open();
+    void close();
+
+    // Left mouse button
+    bool mouseDown(int x, int y);
+    bool mouseUp(int x, int y);
+    // Any other mouse button, pressed or released: consumed over the
+    // menu, never acted upon
+    bool otherButton(int x, int y);
+    bool mouseMotion(int x, int y);
+    bool mouseWheel(int x, int y, int dy);
+    bool escDown();
+    bool escUp();
+
+    Rect button() const;
+    Rect panel() const;
+    int hoveredRow() const;
+    bool isDragging() const;
+
+    std::vector<Command> takeCommands();
+    // True when something visible changed since the last call
+    bool takeRedraw();
+
+private:
+    enum class Press { None, OnButton, OnPanel, OutsidePanel };
+
+    bool overMenu(int x, int y) const;
+    void setHovered(int row);
+
+    int m_WinW, m_WinH;
+    Metrics m_Metrics;
+    double m_FracX, m_FracY;
+    std::vector<bool> m_IsChoiceRow;
+    bool m_ButtonVisible;
+    bool m_Open;
+    int m_Hovered;
+
+    Press m_Press;
+    int m_PressX, m_PressY;
+    int m_PressRow;
+    bool m_Dragging;
+    Rect m_DragStart;
+    Rect m_DragRect;
+    bool m_SwallowEscUp;
+
+    std::vector<Command> m_Commands;
+    bool m_Redraw;
+};
+
 // Runs every check, prints failures to stderr and returns their count
 int floatingMenuSelfTest();
 
