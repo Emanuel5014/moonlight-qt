@@ -169,6 +169,32 @@ void OverlayManager::notifyOverlayUpdated(OverlayType type)
     }
 }
 
+void OverlayManager::setOverlaySurface(OverlayType type, SDL_Surface* surface, int x, int y)
+{
+    SDL_assert(surface == nullptr || surface->format->format == SDL_PIXELFORMAT_ARGB8888);
+
+    m_Overlays[type].position = { x, y };
+    m_Overlays[type].enabled = surface != nullptr;
+
+    SDL_Surface* oldSurface = (SDL_Surface*)SDL_AtomicSetPtr((void**)&m_Overlays[type].surface, surface);
+
+    {
+        QReadLocker lock(&m_OverlayRendererLock);
+        if (m_Renderer != nullptr) {
+            m_Renderer->notifyOverlayUpdated(type);
+        }
+    }
+
+    if (oldSurface != nullptr) {
+        SDL_FreeSurface(oldSurface);
+    }
+}
+
+SDL_Point OverlayManager::getOverlayPosition(OverlayType type)
+{
+    return m_Overlays[type].position;
+}
+
 SDL_Surface* OverlayManager::RenderTextOutlinedWrapped(TTF_Font* font, const char* text, SDL_Color textColor, SDL_Color outlineColor, int outlineWidth, int wrapWidth) {
     if (text == nullptr || text[0] == '\0') {
         return nullptr;

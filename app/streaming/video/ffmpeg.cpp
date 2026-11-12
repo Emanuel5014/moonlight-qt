@@ -75,6 +75,11 @@ bool FFmpegVideoDecoder::isHdrSupported()
     return m_FrontendRenderer->getRendererAttributes() & RENDERER_ATTRIBUTE_HDR_SUPPORT;
 }
 
+bool FFmpegVideoDecoder::isPositionedOverlaySupported()
+{
+    return m_FrontendRenderer->getRendererAttributes() & RENDERER_ATTRIBUTE_POSITIONED_OVERLAY;
+}
+
 void FFmpegVideoDecoder::setHdrMode(bool enabled)
 {
     m_FrontendRenderer->acquireRenderLock();

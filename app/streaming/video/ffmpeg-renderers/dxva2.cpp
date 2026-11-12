@@ -674,6 +674,11 @@ void DXVA2Renderer::notifyOverlayUpdated(Overlay::OverlayType type)
         renderRect.x = 0;
         renderRect.y = 0;
     }
+    else if (type == Overlay::OverlayFloatingMenu) {
+        SDL_Point position = Session::get()->getOverlayManager().getOverlayPosition(type);
+        renderRect.x = position.x;
+        renderRect.y = position.y;
+    }
 
     renderRect.w = newSurface->w;
     renderRect.h = newSurface->h;
@@ -1034,4 +1039,10 @@ void DXVA2Renderer::renderFrame(AVFrame *frame)
         SDL_PushEvent(&event);
         return;
     }
+}
+
+int DXVA2Renderer::getRendererAttributes()
+{
+    // streamfork: floating stream menu
+    return RENDERER_ATTRIBUTE_POSITIONED_OVERLAY;
 }

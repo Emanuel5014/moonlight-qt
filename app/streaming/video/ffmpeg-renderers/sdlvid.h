@@ -20,6 +20,7 @@ public:
     virtual void prepareToRender() override;
     virtual void renderFrame(AVFrame* frame) override;
     virtual bool isRenderThreadSupported() override;
+    virtual int getRendererAttributes() override;
     virtual bool isPixelFormatSupported(int videoFormat, enum AVPixelFormat pixelFormat) override;
     virtual bool testRenderFrame(AVFrame* frame) override;
     virtual bool notifyWindowChanged(PWINDOW_STATE_CHANGE_INFO) override;

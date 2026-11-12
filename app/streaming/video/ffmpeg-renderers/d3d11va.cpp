@@ -1192,6 +1192,11 @@ bool D3D11VARenderer::createOverlayVertexBuffer(Overlay::OverlayType type, int w
         renderRect.x = 0;
         renderRect.y = m_DisplayHeight - height;
     }
+    else if (type == Overlay::OverlayFloatingMenu) {
+        SDL_Point position = Session::get()->getOverlayManager().getOverlayPosition(type);
+        renderRect.x = position.x;
+        renderRect.y = m_DisplayHeight - position.y - height;
+    }
 
     renderRect.w = width;
     renderRect.h = height;
@@ -1494,6 +1499,9 @@ int D3D11VARenderer::getRendererAttributes()
 
     // This renderer supports HDR
     attributes |= RENDERER_ATTRIBUTE_HDR_SUPPORT;
+
+    // streamfork: floating stream menu
+    attributes |= RENDERER_ATTRIBUTE_POSITIONED_OVERLAY;
 
     // This renderer requires frame pacing to synchronize with VBlank when we're in full-screen.
     // In windowed mode, we will render as fast we can and DWM will grab whatever is latest at the

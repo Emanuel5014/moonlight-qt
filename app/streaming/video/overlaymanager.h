@@ -11,6 +11,9 @@ namespace Overlay {
 enum OverlayType {
     OverlayDebug,
     OverlayStatusUpdate,
+    // streamfork: floating stream menu. Its surface and position come from
+    // setOverlaySurface(); never use updateOverlayText()/setOverlayState() on it.
+    OverlayFloatingMenu,
     OverlayMax
 };
 
@@ -40,6 +43,11 @@ public:
 
     void setOverlayRenderer(IOverlayRenderer* renderer);
 
+    // Takes ownership of an ARGB8888 surface (or nullptr to hide the overlay)
+    // drawn with its top left corner at (x, y) in window pixels
+    void setOverlaySurface(OverlayType type, SDL_Surface* surface, int x, int y);
+    SDL_Point getOverlayPosition(OverlayType type);
+
 private:
     void notifyOverlayUpdated(OverlayType type);
     SDL_Surface* RenderTextOutlinedWrapped(TTF_Font* font, const char* text, SDL_Color textColor, SDL_Color outlineColor, int outlineWidth, int wrapWidth);
@@ -52,6 +60,7 @@ private:
 
         TTF_Font* font;
         SDL_Surface* surface;
+        SDL_Point position;
     } m_Overlays[OverlayMax];
     IOverlayRenderer* m_Renderer;
     QByteArray m_FontData;
