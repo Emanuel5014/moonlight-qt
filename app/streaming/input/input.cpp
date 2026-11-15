@@ -49,6 +49,7 @@ SdlInputHandler::SdlInputHandler(StreamingPreferences& prefs, int streamWidth, i
                 modifierTargetName(m_ModifierMap.alt));
 #ifndef QT_NO_DEBUG
     keymapSelfTest();
+    localCursorSelfTest();
 #endif
 
     // SDL3 breaks our auto-capture-on-leave logic because the mouse focus has already
@@ -401,6 +402,9 @@ void SdlInputHandler::setCaptureActive(bool active)
 
     // Now update the keyboard grab
     updateKeyboardGrabState();
+
+    // The local cursor is only used while the mouse is captured in absolute mode
+    updateLocalCursor();
 }
 
 void SdlInputHandler::handleTouchFingerEvent(SDL_TouchFingerEvent* event)

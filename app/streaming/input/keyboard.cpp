@@ -89,6 +89,9 @@ void SdlInputHandler::performSpecialKeyCombo(KeyCombo combo)
         if (!SDL_GetRelativeMouseMode()) {
             m_MouseCursorCapturedVisibilityState = !m_MouseCursorCapturedVisibilityState;
             SDL_ShowCursor(m_MouseCursorCapturedVisibilityState);
+
+            // With the local cursor the host decides the visibility (this only matters when it draws the cursor in the video)
+            updateLocalCursor();
         }
         else {
             SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,

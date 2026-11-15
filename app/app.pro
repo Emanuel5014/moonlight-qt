@@ -191,6 +191,7 @@ SOURCES += \
     streaming/input/input.cpp \
     streaming/input/keyboard.cpp \
     streaming/input/keymap.cpp \
+    streaming/input/localcursor.cpp     streaming/input/localcursorinput.cpp \
     streaming/input/mouse.cpp \
     streaming/input/reltouch.cpp \
     streaming/session.cpp \
@@ -233,6 +234,7 @@ HEADERS += \
     settings/shortcuts.h \
     streaming/input/input.h \
     streaming/input/keymap.h \
+    streaming/input/localcursor.h \
     streaming/session.h \
     streaming/clipboardsync.h \
     streaming/audio/renderers/renderer.h \

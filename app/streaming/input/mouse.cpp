@@ -163,7 +163,12 @@ void SdlInputHandler::handleMouseMotionEvent(SDL_MouseMotionEvent* event)
 
         // Adjust the cursor visibility if applicable
         if (mouseInVideoRegion ^ m_MouseWasInVideoRegion) {
-            SDL_ShowCursor((mouseInVideoRegion && m_MouseCursorCapturedVisibilityState == SDL_DISABLE) ? SDL_DISABLE : SDL_ENABLE);
+            if (m_LocalCursor.isActive()) {
+                applyLocalCursorVisibility(mouseInVideoRegion);
+            }
+            else {
+                SDL_ShowCursor((mouseInVideoRegion && m_MouseCursorCapturedVisibilityState == SDL_DISABLE) ? SDL_DISABLE : SDL_ENABLE);
+            }
             if (!mouseInVideoRegion && buttonState != 0) {
                 // If we still have a button pressed on leave, wait for that to come up
                 // before we stop sending mouse position events.

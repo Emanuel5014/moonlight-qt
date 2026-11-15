@@ -191,6 +191,7 @@ public:
     Q_PROPERTY(ModifierTarget modifierMapCtrl MEMBER modifierMapCtrl NOTIFY keyboardModifierModeChanged)
     Q_PROPERTY(ModifierTarget modifierMapAlt MEMBER modifierMapAlt NOTIFY keyboardModifierModeChanged)
     Q_PROPERTY(bool clipboardSync MEMBER clipboardSync NOTIFY clipboardSyncChanged)
+    Q_PROPERTY(bool localCursor MEMBER localCursor NOTIFY localCursorChanged)
     Q_PROPERTY(VpnMode vpnMode MEMBER vpnMode NOTIFY vpnModeChanged)
     Q_PROPERTY(int vpnTunnelMtu MEMBER vpnTunnelMtu NOTIFY vpnTunnelMtuChanged)
     Q_PROPERTY(bool lowLatencyPresetApplied READ isLowLatencyPresetApplied NOTIFY lowLatencyPresetChanged)
@@ -272,6 +273,7 @@ public:
     ModifierTarget modifierMapCtrl;
     ModifierTarget modifierMapAlt; // Option on macOS
     bool clipboardSync;
+    bool localCursor;
     VpnMode vpnMode;
     int vpnTunnelMtu;
     int shortcutModifiers;
@@ -316,6 +318,7 @@ signals:
     void rendererSelectionChanged();
     void keyboardModifierModeChanged();
     void clipboardSyncChanged();
+    void localCursorChanged();
     void vpnModeChanged();
     void vpnTunnelMtuChanged();
     void shortcutsChanged();

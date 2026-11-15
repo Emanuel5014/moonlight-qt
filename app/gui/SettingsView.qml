@@ -1453,6 +1453,24 @@ Flickable {
                                   qsTr("NOTE: Due to a bug in GeForce Experience, this option may not work properly if your host PC has multiple monitors.")
                 }
 
+                CheckBox {
+                    id: localCursorCheck
+                    hoverEnabled: true
+                    width: parent.width
+                    text: qsTr("Draw the host mouse cursor locally for instant response")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.localCursor
+                    onCheckedChanged: {
+                        StreamingPreferences.localCursor = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 10000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("In remote desktop mouse mode, this PC draws the cursor with the shape it has on the host, so it moves without waiting for the video.") + " " +
+                                  qsTr("This requires a host with the streamfork local cursor extension. With other hosts, the cursor stays in the video.")
+                }
+
                 Row {
                     spacing: 5
                     width: parent.width

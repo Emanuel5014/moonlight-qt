@@ -3,6 +3,7 @@
 #include "settings/streamingpreferences.h"
 #include "backend/computermanager.h"
 #include "keymap.h"
+#include "localcursor.h"
 
 #include "SDL_compat.h"
 
@@ -153,6 +154,16 @@ public:
 
     void updatePointerRegionLock();
 
+    // streamfork local cursor (see LocalCursor)
+    uint32_t startLocalCursor(bool enabled);
+
+    void handleStreamforkReady(uint32_t capabilities);
+
+    void handleLocalCursorEvent(const SDL_UserEvent& event);
+
+    // Turns the local cursor on or off for the current mouse mode and refreshes the cursor
+    void updateLocalCursor();
+
     static
     QString getUnmappedGamepads();
 
@@ -188,6 +199,10 @@ private:
     void handleRelativeFingerEvent(SDL_TouchFingerEvent* event);
 
     void performSpecialKeyCombo(KeyCombo combo);
+
+    void applyLocalCursorVisibility(bool mouseInVideoRegion);
+
+    float getLocalCursorScale();
 
     bool shortcutModifiersMatch(Uint16 mod);
 
@@ -230,6 +245,7 @@ private:
     StreamingPreferences::CaptureSysKeysMode m_CaptureSystemKeysMode;
     ModifierMap m_ModifierMap;
     int m_MouseCursorCapturedVisibilityState;
+    LocalCursor m_LocalCursor;
 
     struct {
         KeyCombo keyCombo;

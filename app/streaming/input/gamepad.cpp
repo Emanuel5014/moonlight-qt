@@ -353,6 +353,7 @@ void SdlInputHandler::handleControllerButtonEvent(SDL_ControllerButtonEvent* eve
                     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                                 "Mouse emulation deactivated");
                     Session::get()->notifyMouseEmulationMode(false);
+                    updateLocalCursor();
                 }
                 else if (m_GamepadMouse) {
                     // Send the start button up event to the host, since we won't do it below
@@ -363,6 +364,7 @@ void SdlInputHandler::handleControllerButtonEvent(SDL_ControllerButtonEvent* eve
                     SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
                                 "Mouse emulation active");
                     Session::get()->notifyMouseEmulationMode(true);
+                    updateLocalCursor();
                 }
             }
         }
@@ -807,6 +809,9 @@ void SdlInputHandler::handleControllerDeviceEvent(SDL_ControllerDeviceEvent* eve
 
             // Clear all remaining state from this slot
             SDL_memset(state, 0, sizeof(*state));
+
+            // Mouse emulation may have ended with this gamepad
+            updateLocalCursor();
         }
     }
 }

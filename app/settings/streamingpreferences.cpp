@@ -58,6 +58,7 @@
 #define SER_MODIFIERMAPCTRL "modifiermapctrl"
 #define SER_MODIFIERMAPALT "modifiermapalt"
 #define SER_CLIPBOARDSYNC "clipboardsync"
+#define SER_LOCALCURSOR "localcursor"
 #define SER_VPNMODE "vpnmode"
 #define SER_VPNTUNNELMTU "vpntunnelmtu"
 #define SER_SHORTCUTMODIFIERS "shortcutmodifiers"
@@ -192,6 +193,7 @@ void StreamingPreferences::reload()
     modifierMapAlt = static_cast<ModifierTarget>(settings.value(SER_MODIFIERMAPALT,
                                                  static_cast<int>(ModifierTarget::MT_ALT)).toInt());
     clipboardSync = settings.value(SER_CLIPBOARDSYNC, true).toBool();
+    localCursor = settings.value(SER_LOCALCURSOR, true).toBool();
     vpnMode = static_cast<VpnMode>(settings.value(SER_VPNMODE,
                                                   static_cast<int>(VpnMode::VPN_AUTO)).toInt());
     // 1420 is the default WireGuard MTU
@@ -403,6 +405,7 @@ void StreamingPreferences::save()
     settings.setValue(SER_MODIFIERMAPCTRL, static_cast<int>(modifierMapCtrl));
     settings.setValue(SER_MODIFIERMAPALT, static_cast<int>(modifierMapAlt));
     settings.setValue(SER_CLIPBOARDSYNC, clipboardSync);
+    settings.setValue(SER_LOCALCURSOR, localCursor);
     settings.setValue(SER_VPNMODE, static_cast<int>(vpnMode));
     settings.setValue(SER_VPNTUNNELMTU, vpnTunnelMtu);
     settings.setValue(SER_SHORTCUTMODIFIERS, shortcutModifiers);

@@ -88,7 +88,9 @@ CONNECTION_LISTENER_CALLBACKS Session::k_ConnCallbacks = {
     Session::clSetControllerLED,
     Session::clSetAdaptiveTriggers,
     ClipboardSync::clClipboardReceived,
-    ClipboardSync::clStreamforkReady
+    ClipboardSync::clStreamforkReady,
+    LocalCursor::clCursorShape,
+    LocalCursor::clCursorState
 };
 
 Session* Session::s_ActiveSession;
@@ -1815,7 +1817,8 @@ void Session::start()
 
     // This must also happen before starting the connection, since it decides which
     // protocol extensions we request from the host.
-    m_ClipboardSync.start(m_Preferences->clipboardSync);
+    LiSetStreamforkCapabilities(m_ClipboardSync.start(m_Preferences->clipboardSync) |
+                                m_InputHandler->startLocalCursor(m_Preferences->localCursor));
 
     // Kick off the async connection thread then return to the caller to pump the event loop
     auto thread = new AsyncConnectionStartThread(this);
@@ -2097,9 +2100,16 @@ void Session::exec()
                                                     (DualSenseOutputReport *)event.user.data2);
                 break;
             case SDL_CODE_CLIPBOARD_RECEIVED:
-            case SDL_CODE_STREAMFORK_READY:
             case SDL_CODE_CLIPBOARD_SEND:
                 m_ClipboardSync.handleUserEvent(event.user);
+                break;
+            case SDL_CODE_STREAMFORK_READY:
+                m_ClipboardSync.handleUserEvent(event.user);
+                m_InputHandler->handleStreamforkReady((uint32_t)(uintptr_t)event.user.data1);
+                break;
+            case SDL_CODE_CURSOR_SHAPE:
+            case SDL_CODE_CURSOR_STATE:
+                m_InputHandler->handleLocalCursorEvent(event.user);
                 break;
             default:
                 SDL_assert(false);
@@ -2123,6 +2133,10 @@ void Session::exec()
                 break;
             case SDL_WINDOWEVENT_LEAVE:
                 m_InputHandler->notifyMouseLeave();
+                break;
+            case SDL_WINDOWEVENT_SIZE_CHANGED:
+                // The local cursor is scaled like the video
+                m_InputHandler->updateLocalCursor();
                 break;
             }
 
