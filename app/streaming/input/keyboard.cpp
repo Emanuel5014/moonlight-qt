@@ -77,6 +77,7 @@ void SdlInputHandler::performSpecialKeyCombo(KeyCombo combo)
 
         // Toggle mouse mode
         m_AbsoluteMouseMode = !m_AbsoluteMouseMode;
+        m_MouseModeToggledByUser = true;
 
         // Recapture input
         setCaptureActive(true);

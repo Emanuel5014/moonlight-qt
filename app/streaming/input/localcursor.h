@@ -62,6 +62,9 @@ public:
 
     bool isActive() const { return m_Active; }
 
+    // True when the user enabled the local cursor and the host supports it
+    bool isGranted() const { return m_Granted; }
+
     // False when the host draws the cursor in the video (no shape available yet, or too large)
     bool hasHostShape() const { return m_StateShapeId != 0; }
 

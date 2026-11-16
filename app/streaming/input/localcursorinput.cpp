@@ -11,6 +11,24 @@ uint32_t SdlInputHandler::startLocalCursor(bool enabled)
 void SdlInputHandler::handleStreamforkReady(uint32_t capabilities)
 {
     m_LocalCursor.handleStreamforkReady(capabilities);
+
+    // The local cursor only works in remote desktop mouse mode. When the user enabled it and
+    // the host supports it, start in that mode instead of making them toggle it every time.
+    // The mouse mode shortcut still switches back to game mode.
+    if (m_LocalCursor.isGranted() && !m_AbsoluteMouseMode && !m_MouseModeToggledByUser) {
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Local cursor: switching to remote desktop mouse mode");
+
+        bool captured = isCaptureActive();
+        if (captured) {
+            setCaptureActive(false);
+        }
+        m_AbsoluteMouseMode = true;
+        if (captured) {
+            setCaptureActive(true);
+        }
+    }
+
     updateLocalCursor();
 }
 

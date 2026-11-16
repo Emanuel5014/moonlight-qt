@@ -1468,7 +1468,8 @@ Flickable {
                     ToolTip.timeout: 10000
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("In remote desktop mouse mode, this PC draws the cursor with the shape it has on the host, so it moves without waiting for the video.") + " " +
-                                  qsTr("This requires a host with the streamfork local cursor extension. With other hosts, the cursor stays in the video.")
+                                  qsTr("This requires a host with the streamfork local cursor extension. With other hosts, the cursor stays in the video.") + " " +
+                                  qsTr("With a supported host the stream starts in remote desktop mouse mode; the mouse mode shortcut switches to game mode.")
                 }
 
                 Row {
