@@ -11,6 +11,7 @@
 #include "audio/renderers/renderer.h"
 #include "video/overlaymanager.h"
 #include "clipboardsync.h"
+#include "filedrop.h"
 
 class SupportedVideoFormatList : public QList<int>
 {
@@ -262,6 +263,7 @@ private:
     bool m_UnexpectedTermination;
     SdlInputHandler* m_InputHandler;
     ClipboardSync m_ClipboardSync;
+    FileDrop m_FileDrop;
     int m_MouseEmulationRefCount;
     int m_FlushingWindowEventsRef;
     QStringList m_LaunchWarnings;

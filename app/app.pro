@@ -195,6 +195,7 @@ SOURCES += \
     streaming/input/reltouch.cpp \
     streaming/session.cpp \
     streaming/clipboardsync.cpp \
+    streaming/filedrop.cpp \
     streaming/audio/audio.cpp \
     streaming/audio/renderers/sdlaud.cpp \
     gui/computermodel.cpp \
@@ -235,6 +236,7 @@ HEADERS += \
     streaming/input/keymap.h \
     streaming/session.h \
     streaming/clipboardsync.h \
+    streaming/filedrop.h \
     streaming/audio/renderers/renderer.h \
     streaming/audio/renderers/sdl.h \
     gui/computermodel.h \

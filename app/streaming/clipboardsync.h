@@ -23,8 +23,8 @@ public:
 
     ~ClipboardSync();
 
-    // Must be called before starting the connection
-    void start(bool enabled);
+    // Returns the capabilities to request from the host. Must be called before starting the connection.
+    uint32_t start(bool enabled);
 
     void stop();
 

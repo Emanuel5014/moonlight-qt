@@ -25,18 +25,18 @@ ClipboardSync::~ClipboardSync()
     stop();
 }
 
-void ClipboardSync::start(bool enabled)
+uint32_t ClipboardSync::start(bool enabled)
 {
     stop();
 
     m_Enabled = enabled;
     m_LastSyncedText.clear();
 
-    LiSetStreamforkCapabilities(enabled ?
-                                    (STREAMFORK_CAP_CLIPBOARD_TEXT |
-                                     STREAMFORK_CAP_CLIPBOARD_TO_CLIENT |
-                                     STREAMFORK_CAP_CLIPBOARD_TO_HOST) :
-                                    0);
+    return enabled ?
+               (STREAMFORK_CAP_CLIPBOARD_TEXT |
+                STREAMFORK_CAP_CLIPBOARD_TO_CLIENT |
+                STREAMFORK_CAP_CLIPBOARD_TO_HOST) :
+               0;
 }
 
 void ClipboardSync::stop()
