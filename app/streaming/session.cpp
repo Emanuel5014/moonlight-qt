@@ -1818,7 +1818,8 @@ void Session::start()
     // This must also happen before starting the connection, since it decides which
     // protocol extensions we request from the host.
     LiSetStreamforkCapabilities(m_ClipboardSync.start(m_Preferences->clipboardSync) |
-                                m_InputHandler->startLocalCursor(m_Preferences->localCursor));
+                                m_InputHandler->startLocalCursor(m_Preferences->localCursor) |
+                                m_FileDrop.start(m_Preferences->fileDrop, m_Computer));
 
     // Kick off the async connection thread then return to the caller to pump the event loop
     auto thread = new AsyncConnectionStartThread(this);
@@ -1844,6 +1845,7 @@ void Session::exec()
     // If the connection failed, clean up and abort the connection.
     if (!m_AsyncConnectionSuccess) {
         m_ClipboardSync.stop();
+        m_FileDrop.stop();
         delete m_InputHandler;
         m_InputHandler = nullptr;
         SDL_QuitSubSystem(SDL_INIT_VIDEO);
@@ -2111,6 +2113,10 @@ void Session::exec()
             case SDL_CODE_CURSOR_STATE:
                 m_InputHandler->handleLocalCursorEvent(event.user);
                 break;
+            case SDL_CODE_FILE_DROP_STATUS:
+            case SDL_CODE_FILE_DROP_HIDE_STATUS:
+                m_FileDrop.handleUserEvent(event.user, m_OverlayManager);
+                break;
             default:
                 SDL_assert(false);
             }
@@ -2332,6 +2338,12 @@ void Session::exec()
         case SDL_CLIPBOARDUPDATE:
             m_ClipboardSync.handleClipboardUpdate();
             break;
+        case SDL_DROPBEGIN:
+        case SDL_DROPFILE:
+        case SDL_DROPTEXT:
+        case SDL_DROPCOMPLETE:
+            m_FileDrop.handleDropEvent(event);
+            break;
         case SDL_MOUSEBUTTONDOWN:
         case SDL_MOUSEBUTTONUP:
             presence.runCallbacks();
@@ -2391,6 +2403,7 @@ void Session::exec()
 
 DispatchDeferredCleanup:
     m_ClipboardSync.stop();
+    m_FileDrop.stop();
 
     // Switch back to synchronous logging mode
     StreamUtils::exitAsyncLoggingMode();

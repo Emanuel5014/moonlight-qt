@@ -1109,6 +1109,25 @@ Flickable {
                     ToolTip.text: qsTr("Text copied on this PC can be pasted on the host right away, and vice versa.") + " " +
                                   qsTr("This requires a host with the streamfork clipboard extension. With other hosts, use the paste text shortcut instead.")
                 }
+
+                CheckBox {
+                    id: fileDropCheck
+                    hoverEnabled: true
+                    width: parent.width
+                    text: qsTr("Send files dropped on the stream window to the host PC")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.fileDrop
+                    onCheckedChanged: {
+                        StreamingPreferences.fileDrop = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 10000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Files dragged onto the stream window are saved in the streamfork folder of the host's Downloads.") + " " +
+                                  qsTr("The mouse must not be captured: use a windowed or borderless window.") + " " +
+                                  qsTr("This requires a host with the streamfork file drop extension and the file upload permission.")
+                }
             }
         }
 
