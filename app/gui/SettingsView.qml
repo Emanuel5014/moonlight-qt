@@ -1128,6 +1128,52 @@ Flickable {
                                   qsTr("The mouse must not be captured: use a windowed or borderless window.") + " " +
                                   qsTr("This requires a host with the streamfork file drop extension and the file upload permission.")
                 }
+
+                CheckBox {
+                    id: fileDropToClipboardCheck
+                    hoverEnabled: true
+                    width: parent.width
+                    visible: fileDropCheck.checked
+                    text: qsTr("Put the files in the host clipboard, ready to paste with Ctrl+V")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.fileDropToClipboard
+                    onCheckedChanged: {
+                        StreamingPreferences.fileDropToClipboard = checked
+                    }
+
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 10000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("This replaces what was in the host clipboard.")
+                }
+
+                Row {
+                    spacing: 5
+                    visible: fileDropCheck.checked
+
+                    Label {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: qsTr("File transfer speed limit (Mbps, 0 = no limit):")
+                        font.pointSize: 12
+                    }
+
+                    SpinBox {
+                        id: fileDropMaxMbpsSpinBox
+                        from: 0
+                        to: 10000
+                        stepSize: 10
+                        editable: true
+                        value: StreamingPreferences.fileDropMaxMbps
+                        onValueModified: {
+                            StreamingPreferences.fileDropMaxMbps = value
+                        }
+
+                        ToolTip.delay: 1000
+                        ToolTip.timeout: 10000
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Limits how fast files are sent, so that a large transfer doesn't slow down the stream.")
+                    }
+                }
             }
         }
 

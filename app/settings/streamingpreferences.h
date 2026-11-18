@@ -193,6 +193,8 @@ public:
     Q_PROPERTY(bool clipboardSync MEMBER clipboardSync NOTIFY clipboardSyncChanged)
     Q_PROPERTY(bool localCursor MEMBER localCursor NOTIFY localCursorChanged)
     Q_PROPERTY(bool fileDrop MEMBER fileDrop NOTIFY fileDropChanged)
+    Q_PROPERTY(bool fileDropToClipboard MEMBER fileDropToClipboard NOTIFY fileDropChanged)
+    Q_PROPERTY(int fileDropMaxMbps MEMBER fileDropMaxMbps NOTIFY fileDropChanged)
     Q_PROPERTY(VpnMode vpnMode MEMBER vpnMode NOTIFY vpnModeChanged)
     Q_PROPERTY(int vpnTunnelMtu MEMBER vpnTunnelMtu NOTIFY vpnTunnelMtuChanged)
     Q_PROPERTY(bool lowLatencyPresetApplied READ isLowLatencyPresetApplied NOTIFY lowLatencyPresetChanged)
@@ -276,6 +278,8 @@ public:
     bool clipboardSync;
     bool localCursor;
     bool fileDrop;
+    bool fileDropToClipboard;
+    int fileDropMaxMbps; // 0 = no limit
     VpnMode vpnMode;
     int vpnTunnelMtu;
     int shortcutModifiers;

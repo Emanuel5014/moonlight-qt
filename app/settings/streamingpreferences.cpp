@@ -60,6 +60,8 @@
 #define SER_CLIPBOARDSYNC "clipboardsync"
 #define SER_LOCALCURSOR "localcursor"
 #define SER_FILEDROP "filedrop"
+#define SER_FILEDROPTOCLIPBOARD "filedroptoclipboard"
+#define SER_FILEDROPMAXMBPS "filedropmaxmbps"
 #define SER_VPNMODE "vpnmode"
 #define SER_VPNTUNNELMTU "vpntunnelmtu"
 #define SER_SHORTCUTMODIFIERS "shortcutmodifiers"
@@ -196,6 +198,8 @@ void StreamingPreferences::reload()
     clipboardSync = settings.value(SER_CLIPBOARDSYNC, true).toBool();
     localCursor = settings.value(SER_LOCALCURSOR, true).toBool();
     fileDrop = settings.value(SER_FILEDROP, true).toBool();
+    fileDropToClipboard = settings.value(SER_FILEDROPTOCLIPBOARD, true).toBool();
+    fileDropMaxMbps = settings.value(SER_FILEDROPMAXMBPS, 100).toInt();
     vpnMode = static_cast<VpnMode>(settings.value(SER_VPNMODE,
                                                   static_cast<int>(VpnMode::VPN_AUTO)).toInt());
     // 1420 is the default WireGuard MTU
@@ -409,6 +413,8 @@ void StreamingPreferences::save()
     settings.setValue(SER_CLIPBOARDSYNC, clipboardSync);
     settings.setValue(SER_LOCALCURSOR, localCursor);
     settings.setValue(SER_FILEDROP, fileDrop);
+    settings.setValue(SER_FILEDROPTOCLIPBOARD, fileDropToClipboard);
+    settings.setValue(SER_FILEDROPMAXMBPS, fileDropMaxMbps);
     settings.setValue(SER_VPNMODE, static_cast<int>(vpnMode));
     settings.setValue(SER_VPNTUNNELMTU, vpnTunnelMtu);
     settings.setValue(SER_SHORTCUTMODIFIERS, shortcutModifiers);

@@ -1819,7 +1819,8 @@ void Session::start()
     // protocol extensions we request from the host.
     LiSetStreamforkCapabilities(m_ClipboardSync.start(m_Preferences->clipboardSync) |
                                 m_InputHandler->startLocalCursor(m_Preferences->localCursor) |
-                                m_FileDrop.start(m_Preferences->fileDrop, m_Computer));
+                                m_FileDrop.start(m_Preferences->fileDrop, m_Preferences->fileDropToClipboard,
+                                                 m_Preferences->fileDropMaxMbps, m_Computer));
 
     // Kick off the async connection thread then return to the caller to pump the event loop
     auto thread = new AsyncConnectionStartThread(this);
