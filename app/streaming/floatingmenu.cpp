@@ -257,9 +257,13 @@ void FloatingMenu::rebuildRows()
         Row::ShowCursor,
         Row::Minimize,
         Row::HideButton,
-        Row::Disconnect,
-        Row::QuitAndExit,
     };
+    if (m_Session->m_FileDrop.isEnabled()) {
+        // Enabled only while files are being sent
+        m_Rows.push_back(Row::CancelFileTransfer);
+    }
+    m_Rows.push_back(Row::Disconnect);
+    m_Rows.push_back(Row::QuitAndExit);
 
     m_Controller.setRows(std::vector<bool>(m_Rows.size(), false));
 }
@@ -421,6 +425,11 @@ void FloatingMenu::activate(Row row)
         setHidden(true);
         break;
 
+    case Row::CancelFileTransfer:
+        closePanel();
+        m_Session->m_FileDrop.cancelUploads();
+        break;
+
     case Row::Disconnect:
         closePanel();
         input->performSpecialKeyCombo(SdlInputHandler::KeyComboQuit);
@@ -466,6 +475,8 @@ QString FloatingMenu::rowLabel(Row row) const
         return QCoreApplication::translate("FloatingMenu", "Minimize");
     case Row::HideButton:
         return QCoreApplication::translate("FloatingMenu", "Hide button");
+    case Row::CancelFileTransfer:
+        return QCoreApplication::translate("FloatingMenu", "Cancel file transfer");
     case Row::Disconnect:
         return QCoreApplication::translate("FloatingMenu", "Disconnect");
     case Row::QuitAndExit:
@@ -513,6 +524,9 @@ bool FloatingMenu::rowEnabled(Row row) const
     if (row == Row::ShowCursor) {
         // The local cursor can only be shown in remote desktop mouse mode
         return m_Session->m_InputHandler->m_AbsoluteMouseMode;
+    }
+    if (row == Row::CancelFileTransfer) {
+        return m_Session->m_FileDrop.isBusy();
     }
     return true;
 }

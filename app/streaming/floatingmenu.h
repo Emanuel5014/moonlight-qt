@@ -46,6 +46,7 @@ private:
         ShowCursor,
         Minimize,
         HideButton,
+        CancelFileTransfer, // streamfork spec 10
         Disconnect,
         QuitAndExit,
     };
