@@ -24,7 +24,6 @@
 #include <QWaitCondition>
 #include <QXmlStreamReader>
 
-#include <atomic>
 #include <deque>
 #include <map>
 
@@ -37,6 +36,8 @@ constexpr qint64 k_TargetChunkMs = 1000;
 constexpr int k_RequestTimeoutMs = 15000;
 constexpr int k_DataTimeoutMs = 60000;
 constexpr int k_CancelTimeoutMs = 1500;
+constexpr int k_MaxRetries = 3;
+constexpr int k_FirstRetryDelayMs = 1000;
 constexpr Uint32 k_ProgressIntervalMs = 250;
 constexpr Uint32 k_MessageMs = 3000;
 constexpr Uint32 k_ErrorMessageMs = 5000;
@@ -58,13 +59,20 @@ QString formatRate(double bytesPerSecond)
     return QString::number(bytesPerSecond / 1024, 'f', 0) + " KB/s";
 }
 
-struct HostInfo
+QString fileCount(int count)
+{
+    return count == 1 ? QString("1 file") : QString::number(count) + " files";
+}
+
+struct UploadSettings
 {
     QString address;
     uint16_t httpsPort;
     QSslCertificate serverCert;
     QSslConfiguration sslConfig;
     QString uniqueId;
+    bool toClipboard;
+    int maxMbps; // 0 = no limit
 };
 
 // The reply of an /actions/upload request
@@ -85,10 +93,13 @@ struct UploadReply
 class FileUploadThread : public QThread
 {
 public:
-    explicit FileUploadThread(const HostInfo& host) :
-        m_Host(host),
+    explicit FileUploadThread(const UploadSettings& settings) :
+        m_Settings(settings),
         m_Stopping(false),
-        m_Nam(nullptr)
+        m_CancelGeneration(0),
+        m_BatchGeneration(0),
+        m_Nam(nullptr),
+        m_RateBytes(0)
     {
         setObjectName("File upload");
     }
@@ -108,6 +119,16 @@ public:
         m_Wake.wakeAll();
     }
 
+    // Aborts the current upload and drops the queued ones. Returns false if nothing was in progress.
+    bool requestCancel()
+    {
+        QMutexLocker locker(&m_Mutex);
+        bool busy = m_Busy || !m_Queue.empty();
+        m_Queue.clear();
+        m_CancelGeneration++;
+        return busy;
+    }
+
 protected:
     void run() override
     {
@@ -119,7 +140,7 @@ protected:
                          [this](QNetworkReply* reply, const QList<QSslError>& errors) {
             // Same rule as NvHTTP: only trust the certificate we got when pairing
             for (const QSslError& error : errors) {
-                if (m_Host.serverCert.isNull() || m_Host.serverCert != error.certificate()) {
+                if (m_Settings.serverCert.isNull() || m_Settings.serverCert != error.certificate()) {
                     return;
                 }
             }
@@ -130,6 +151,7 @@ protected:
             QStringList paths;
             {
                 QMutexLocker locker(&m_Mutex);
+                m_Busy = false;
                 while (m_Queue.empty() && !m_Stopping) {
                     m_Wake.wait(&m_Mutex);
                 }
@@ -138,6 +160,8 @@ protected:
                 }
                 paths = m_Queue.front();
                 m_Queue.pop_front();
+                m_Busy = true;
+                m_BatchGeneration = m_CancelGeneration;
             }
 
             uploadBatch(paths);
@@ -153,17 +177,38 @@ private:
         return m_Stopping;
     }
 
+    // The session is ending or the user cancelled this batch
+    bool aborted()
+    {
+        QMutexLocker locker(&m_Mutex);
+        return m_Stopping || m_CancelGeneration != m_BatchGeneration;
+    }
+
+    // Waits without missing a stop or cancel request. Returns false if aborted.
+    bool waitMs(qint64 ms)
+    {
+        QElapsedTimer timer;
+        timer.start();
+        while (timer.elapsed() < ms) {
+            if (aborted()) {
+                return false;
+            }
+            QThread::msleep((unsigned long)qMin<qint64>(50, ms - timer.elapsed()));
+        }
+        return !aborted();
+    }
+
     UploadReply post(const QString& command, const QList<QPair<QString, QString>>& args,
-                     const QByteArray& body, int timeoutMs, bool abortOnStop = true)
+                     const QByteArray& body, int timeoutMs, bool abortable = true)
     {
         QUrl url;
         url.setScheme("https");
-        url.setHost(m_Host.address);
-        url.setPort(m_Host.httpsPort);
+        url.setHost(m_Settings.address);
+        url.setPort(m_Settings.httpsPort);
         url.setPath("/actions/upload/" + command);
 
         // Encode everything but unreserved characters: the host decodes '+' as a space
-        QString query = "uniqueid=" + m_Host.uniqueId +
+        QString query = "uniqueid=" + m_Settings.uniqueId +
                         "&uuid=" + QUuid::createUuid().toRfc4122().toHex();
         for (const auto& arg : args) {
             query += "&" + arg.first + "=" + QString::fromLatin1(QUrl::toPercentEncoding(arg.second));
@@ -171,7 +216,7 @@ private:
         url.setQuery(query, QUrl::StrictMode);
 
         QNetworkRequest request(url);
-        request.setSslConfiguration(m_Host.sslConfig);
+        request.setSslConfiguration(m_Settings.sslConfig);
         request.setHeader(QNetworkRequest::ContentTypeHeader, "application/octet-stream");
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         request.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
@@ -187,21 +232,21 @@ private:
         QObject::connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
         timeout.start(timeoutMs);
 
-        // Check for stop requests while the request is in flight
-        QTimer stopCheck;
-        QObject::connect(&stopCheck, &QTimer::timeout, &loop, [&]() {
-            if (abortOnStop && stopping()) {
+        // Check for stop and cancel requests while the request is in flight
+        QTimer abortCheck;
+        QObject::connect(&abortCheck, &QTimer::timeout, &loop, [&]() {
+            if (abortable && aborted()) {
                 loop.quit();
             }
         });
-        stopCheck.start(100);
+        abortCheck.start(100);
 
         loop.exec(QEventLoop::ExcludeUserInputEvents);
 
         UploadReply result;
         if (!reply->isFinished()) {
             reply->abort();
-            result.message = stopping() ? "Cancelled" : "Request timed out";
+            result.message = aborted() ? "Cancelled" : "Request timed out";
         }
         else if (reply->error() != QNetworkReply::NoError) {
             result.message = reply->errorString();
@@ -279,8 +324,27 @@ private:
 
     void cancelOnHost(const QString& id)
     {
-        // Best effort: the host also drops abandoned uploads on its own
+        // Best effort: the host also drops abandoned uploads on its own and when the stream ends
         post("cancel", {{"id", id}}, QByteArray(), k_CancelTimeoutMs, false);
+    }
+
+    // Keeps the average speed of the batch under the limit chosen by the user
+    bool throttle()
+    {
+        if (m_Settings.maxMbps <= 0) {
+            return !aborted();
+        }
+        qint64 dueMs = m_RateBytes * 8 / (m_Settings.maxMbps * 1000LL);
+        return waitMs(dueMs - m_RateTimer.elapsed());
+    }
+
+    qint64 maxChunkForRate(qint64 maxChunk) const
+    {
+        if (m_Settings.maxMbps <= 0) {
+            return maxChunk;
+        }
+        // About one second of transfer at the limit, so the pacing stays smooth
+        return qBound(k_MinChunkSize, m_Settings.maxMbps * 125000LL, maxChunk);
     }
 
     void uploadBatch(const QStringList& paths)
@@ -291,7 +355,10 @@ private:
         int skippedFolders = 0;
         QString lastError;
 
-        for (int i = 0; i < total && !stopping(); i++) {
+        m_RateBytes = 0;
+        m_RateTimer.start();
+
+        for (int i = 0; i < total && !aborted(); i++) {
             QFileInfo info(paths[i]);
             if (info.isDir()) {
                 skippedFolders++;
@@ -316,12 +383,30 @@ private:
             return;
         }
 
-        QString text;
+        bool cancelled = aborted();
+        bool inClipboard = false;
         if (sent > 0) {
-            text = (sent == 1 ? QString("1 file") : QString::number(sent) + " files") +
-                   " saved on the host in Downloads\\streamfork";
+            // Older hosts don't know this request: then the files are simply in the folder
+            UploadReply reply = post("commit",
+                                     {{"batch", QString::number(batch)},
+                                      {"clipboard", m_Settings.toClipboard && !cancelled ? "1" : "0"}},
+                                     QByteArray(), k_RequestTimeoutMs, false);
+            inClipboard = reply.ok() && reply.values["clipboard"] == "1";
         }
-        if (!lastError.isEmpty()) {
+
+        QString text;
+        if (cancelled) {
+            text = "File transfer cancelled";
+            if (sent > 0) {
+                text += "\n" + fileCount(sent) + " already saved on the host in Downloads\\streamfork";
+            }
+        }
+        else if (sent > 0) {
+            text = inClipboard ?
+                       fileCount(sent) + " copied to the host: paste with Ctrl+V" :
+                       fileCount(sent) + " saved on the host in Downloads\\streamfork";
+        }
+        if (!lastError.isEmpty() && !cancelled) {
             text += (text.isEmpty() ? "" : "\n") + lastError;
         }
         if (skippedFolders > 0) {
@@ -329,6 +414,49 @@ private:
         }
         if (!text.isEmpty()) {
             FileDrop::postStatus(text, lastError.isEmpty() ? k_MessageMs : k_ErrorMessageMs);
+        }
+    }
+
+    // Sends one chunk, retrying after network errors. The host tells us how much it
+    // received when we retry, so a chunk that arrived but whose reply was lost isn't
+    // written twice. Returns false with reply set to the last failure.
+    bool sendChunk(const QString& id, qint64 offset, const QByteArray& chunk, UploadReply& reply)
+    {
+        for (int attempt = 0;; attempt++) {
+            reply = post("data", {{"id", id}, {"offset", QString::number(offset)}}, chunk, k_DataTimeoutMs);
+            if (reply.ok()) {
+                return true;
+            }
+            if (aborted()) {
+                return false;
+            }
+
+            if (!reply.networkError && reply.status == 409) {
+                qint64 received = reply.values["received"].toLongLong();
+                if (received == offset + chunk.size()) {
+                    // The previous attempt made it, only its reply was lost
+                    return true;
+                }
+                if (received != offset) {
+                    return false;
+                }
+            }
+            else if (!reply.networkError) {
+                // The host refused the chunk: retrying won't help
+                return false;
+            }
+
+            if (attempt >= k_MaxRetries) {
+                return false;
+            }
+
+            int delayMs = k_FirstRetryDelayMs << attempt;
+            SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                        "File upload chunk at offset %lld failed (%s), retrying in %d ms",
+                        (long long)offset, qPrintable(reply.message), delayMs);
+            if (!waitMs(delayMs)) {
+                return false;
+            }
         }
     }
 
@@ -355,7 +483,7 @@ private:
                                   {"size", QString::number(size)}},
                                  QByteArray(), k_RequestTimeoutMs);
         if (!reply.ok()) {
-            if (stopping()) {
+            if (aborted()) {
                 return false;
             }
             SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
@@ -371,6 +499,7 @@ private:
         if (maxChunk <= 0) {
             maxChunk = k_DefaultMaxChunkSize;
         }
+        maxChunk = maxChunkForRate(maxChunk);
 
         QCryptographicHash sha256(QCryptographicHash::Sha256);
         qint64 chunkSize = qMin(k_InitialChunkSize, maxChunk);
@@ -381,7 +510,7 @@ private:
         qint64 lastProgressMs = -(qint64)k_ProgressIntervalMs;
 
         while (offset < size) {
-            if (stopping()) {
+            if (!throttle()) {
                 cancelOnHost(id);
                 return false;
             }
@@ -403,14 +532,12 @@ private:
                 error = "Unable to read " + displayName(name);
                 return false;
             }
-            sha256.addData(chunk);
 
             QElapsedTimer chunkTimer;
             chunkTimer.start();
 
-            reply = post("data", {{"id", id}, {"offset", QString::number(offset)}}, chunk, k_DataTimeoutMs);
-            if (!reply.ok()) {
-                if (!stopping()) {
+            if (!sendChunk(id, offset, chunk, reply)) {
+                if (!aborted()) {
                     SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                                 "File upload failed at offset %lld: status %d, %s",
                                 (long long)offset, reply.status, qPrintable(reply.message));
@@ -420,7 +547,11 @@ private:
                 cancelOnHost(id);
                 return false;
             }
+
+            // Only hash what the host confirmed, so the checksum matches after a retry
+            sha256.addData(chunk);
             offset += chunk.size();
+            m_RateBytes += chunk.size();
 
             // Aim for about one request per second: big chunks on fast links, small
             // ones on slow links so that progress and cancellation stay responsive
@@ -429,10 +560,27 @@ private:
             chunkSize = qBound(k_MinChunkSize, qMin(ideal, chunkSize * 2), maxChunk);
         }
 
-        reply = post("end", {{"id", id}, {"sha256", QString::fromLatin1(sha256.result().toHex())}},
-                     QByteArray(), k_RequestTimeoutMs);
+        QString sha256Hex = QString::fromLatin1(sha256.result().toHex());
+        bool lostReply = false;
+        for (int attempt = 0;; attempt++) {
+            reply = post("end", {{"id", id}, {"sha256", sha256Hex}}, QByteArray(), k_RequestTimeoutMs);
+            if (reply.ok() || !reply.networkError || aborted() || attempt >= k_MaxRetries) {
+                break;
+            }
+            lostReply = true;
+            if (!waitMs(k_FirstRetryDelayMs << attempt)) {
+                break;
+            }
+        }
+
         if (!reply.ok()) {
-            if (!stopping()) {
+            if (lostReply && !reply.networkError && reply.status == 404) {
+                // An earlier attempt finished the upload but its reply was lost
+                SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
+                            "Assuming the dropped file was saved: the reply to its last request was lost");
+                return true;
+            }
+            if (!aborted()) {
                 SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION,
                             "File upload could not be completed: status %d, %s",
                             reply.status, qPrintable(reply.message));
@@ -448,19 +596,26 @@ private:
         return true;
     }
 
-    const HostInfo m_Host;
+    const UploadSettings m_Settings;
 
     QMutex m_Mutex;
     QWaitCondition m_Wake;
     std::deque<QStringList> m_Queue;
     bool m_Stopping;
+    bool m_Busy = false;
+    unsigned m_CancelGeneration;
+    unsigned m_BatchGeneration;
 
     // Only used on the upload thread
     QNetworkAccessManager* m_Nam;
+    QElapsedTimer m_RateTimer;
+    qint64 m_RateBytes;
 };
 
 FileDrop::FileDrop() :
     m_Enabled(false),
+    m_ToClipboard(true),
+    m_MaxMbps(0),
     m_Computer(nullptr),
     m_Thread(nullptr),
     m_DropInProgress(false),
@@ -475,11 +630,13 @@ FileDrop::~FileDrop()
     stop();
 }
 
-uint32_t FileDrop::start(bool enabled, NvComputer* computer)
+uint32_t FileDrop::start(bool enabled, bool toClipboard, int maxMbps, NvComputer* computer)
 {
     stop();
 
     m_Enabled = enabled;
+    m_ToClipboard = toClipboard;
+    m_MaxMbps = maxMbps;
     m_Computer = computer;
     m_DropInProgress = false;
     m_PendingPaths.clear();
@@ -503,6 +660,16 @@ void FileDrop::stop()
 
     m_PendingPaths.clear();
     m_DropInProgress = false;
+}
+
+bool FileDrop::cancelUploads()
+{
+    if (m_Thread == nullptr || !m_Thread->requestCancel()) {
+        return false;
+    }
+
+    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "File upload cancelled by the user");
+    return true;
 }
 
 void FileDrop::handleDropEvent(const SDL_Event& event)
@@ -555,17 +722,19 @@ void FileDrop::submitPendingDrop()
     }
 
     if (m_Thread == nullptr) {
-        HostInfo host;
+        UploadSettings settings;
         {
             QReadLocker lock(&m_Computer->lock);
-            host.address = m_Computer->activeAddress.address();
-            host.httpsPort = m_Computer->activeHttpsPort;
-            host.serverCert = m_Computer->serverCert;
+            settings.address = m_Computer->activeAddress.address();
+            settings.httpsPort = m_Computer->activeHttpsPort;
+            settings.serverCert = m_Computer->serverCert;
         }
-        host.sslConfig = IdentityManager::get()->getSslConfig();
-        host.uniqueId = IdentityManager::get()->getUniqueId();
+        settings.sslConfig = IdentityManager::get()->getSslConfig();
+        settings.uniqueId = IdentityManager::get()->getUniqueId();
+        settings.toClipboard = m_ToClipboard;
+        settings.maxMbps = m_MaxMbps;
 
-        m_Thread = new FileUploadThread(host);
+        m_Thread = new FileUploadThread(settings);
         m_Thread->start();
     }
 

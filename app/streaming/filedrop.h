@@ -32,10 +32,15 @@ public:
     ~FileDrop();
 
     // Returns the capabilities to request from the host. Must be called before starting the connection.
-    uint32_t start(bool enabled, NvComputer* computer);
+    // toClipboard puts the files of each drop in the host clipboard; maxMbps limits the upload speed (0 = no limit).
+    uint32_t start(bool enabled, bool toClipboard, int maxMbps, NvComputer* computer);
 
     // Cancels any upload in progress
     void stop();
+
+    // Cancels the current and queued uploads, keeping the files already sent.
+    // Returns false if nothing was being sent.
+    bool cancelUploads();
 
     // SDL_DROPBEGIN, SDL_DROPFILE, SDL_DROPTEXT and SDL_DROPCOMPLETE
     void handleDropEvent(const SDL_Event& event);
@@ -53,6 +58,8 @@ private:
     static Uint32 hideTimerCallback(Uint32 interval, void* param);
 
     bool m_Enabled;
+    bool m_ToClipboard;
+    int m_MaxMbps;
     NvComputer* m_Computer;
     FileUploadThread* m_Thread;
 
