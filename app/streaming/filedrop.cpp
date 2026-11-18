@@ -119,6 +119,12 @@ public:
         m_Wake.wakeAll();
     }
 
+    bool isBusy()
+    {
+        QMutexLocker locker(&m_Mutex);
+        return m_Busy || !m_Queue.empty();
+    }
+
     // Aborts the current upload and drops the queued ones. Returns false if nothing was in progress.
     bool requestCancel()
     {
@@ -660,6 +666,16 @@ void FileDrop::stop()
 
     m_PendingPaths.clear();
     m_DropInProgress = false;
+}
+
+bool FileDrop::isEnabled() const
+{
+    return m_Enabled;
+}
+
+bool FileDrop::isBusy() const
+{
+    return m_Thread != nullptr && m_Thread->isBusy();
 }
 
 bool FileDrop::cancelUploads()

@@ -38,6 +38,11 @@ public:
     // Cancels any upload in progress
     void stop();
 
+    bool isEnabled() const;
+
+    // Files are being sent or waiting to be sent
+    bool isBusy() const;
+
     // Cancels the current and queued uploads, keeping the files already sent.
     // Returns false if nothing was being sent.
     bool cancelUploads();
