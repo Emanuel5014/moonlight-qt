@@ -13,6 +13,8 @@
 #include "clipboardsync.h"
 #include "filedrop.h"
 
+class FloatingMenu;
+
 class SupportedVideoFormatList : public QList<int>
 {
 public:
@@ -98,6 +100,7 @@ class Session : public QObject
     friend class SdlInputHandler;
     friend class DeferredSessionCleanupTask;
     friend class AsyncConnectionStartThread;
+    friend class FloatingMenu;
 
 public:
     explicit Session(NvComputer* computer, NvApp& app, StreamingPreferences *preferences = nullptr);
@@ -262,6 +265,7 @@ private:
     QQuickWindow* m_QtWindow;
     bool m_UnexpectedTermination;
     SdlInputHandler* m_InputHandler;
+    FloatingMenu* m_FloatingMenu; // streamfork spec 08
     ClipboardSync m_ClipboardSync;
     FileDrop m_FileDrop;
     int m_MouseEmulationRefCount;

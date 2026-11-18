@@ -69,6 +69,9 @@ public:
     virtual bool isHardwareAccelerated() = 0;
     virtual bool isAlwaysFullScreen() = 0;
     virtual bool isHdrSupported() = 0;
+    // streamfork: floating menu support (Overlay::OverlayFloatingMenu)
+    virtual bool isPositionedOverlaySupported() { return false; }
+    virtual void redrawLastFrame() {}
     virtual int getDecoderCapabilities() = 0;
     virtual int getDecoderColorspace() = 0;
     virtual int getDecoderColorRange() = 0;

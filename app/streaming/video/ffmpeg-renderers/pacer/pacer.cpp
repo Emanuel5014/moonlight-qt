@@ -41,7 +41,7 @@ Pacer::Pacer(IFFmpegRenderer* renderer, PVIDEO_STATS videoStats) :
     m_DisplayFps(0),
     m_VideoStats(videoStats)
 {
-
+    SDL_AtomicSet(&m_RedrawRequested, 0);
 }
 
 Pacer::~Pacer()
@@ -105,6 +105,46 @@ void Pacer::renderOnMainThread()
     }
 }
 
+void Pacer::redrawLastFrame()
+{
+    if (m_RenderThread != nullptr) {
+        // Let the render thread do it
+        QMutexLocker locker(&m_FrameQueueLock);
+        SDL_AtomicSet(&m_RedrawRequested, 1);
+        m_RenderQueueNotEmpty.wakeAll();
+        return;
+    }
+
+    // We render on the main thread. A queued frame will redraw the overlays anyway.
+    m_FrameQueueLock.lock();
+    bool queueEmpty = m_RenderQueue.isEmpty();
+    m_FrameQueueLock.unlock();
+
+    if (queueEmpty) {
+        renderLastFrameAgain();
+    }
+}
+
+bool Pacer::canRenderLastFrameAgain()
+{
+    // m_DeferredFreeFrame is the last rendered frame, kept alive until the next one.
+    // It is only touched on the render thread (or the main thread without one).
+    // Renderers that take the buffers (av_frame_move_ref) leave it empty.
+    return m_DeferredFreeFrame != nullptr && m_DeferredFreeFrame->buf[0] != nullptr;
+}
+
+void Pacer::renderLastFrameAgain()
+{
+    if (!canRenderLastFrameAgain()) {
+        return;
+    }
+
+    // Don't count this in the video stats
+    m_VsyncRenderer->acquireRenderLock();
+    m_VsyncRenderer->renderFrame(m_DeferredFreeFrame);
+    m_VsyncRenderer->releaseRenderLock();
+}
+
 int Pacer::vsyncThread(void *context)
 {
     Pacer* me = reinterpret_cast<Pacer*>(context);
@@ -165,8 +205,11 @@ int Pacer::renderThread(void* context)
             // the not empty condition
             QMutexLocker locker(&me->m_FrameQueueLock);
 
-            // Wait for a frame to be ready to render
-            while (!me->m_Stopping && me->m_RenderQueue.isEmpty()) {
+            // Wait for a frame to be ready to render (or a redraw request we can honor).
+            // NB: waitToRender() must be followed by renderFrame(), so we never loop
+            // back to it without rendering something.
+            while (!me->m_Stopping && me->m_RenderQueue.isEmpty() &&
+                   !(SDL_AtomicGet(&me->m_RedrawRequested) && me->canRenderLastFrameAgain())) {
                 me->m_RenderQueueNotEmpty.wait(&me->m_FrameQueueLock);
             }
 
@@ -175,7 +218,20 @@ int Pacer::renderThread(void* context)
                 break;
             }
 
-            frame = me->m_RenderQueue.dequeue();
+            // A new frame redraws the overlays anyway
+            SDL_AtomicSet(&me->m_RedrawRequested, 0);
+
+            if (me->m_RenderQueue.isEmpty()) {
+                frame = nullptr;
+            }
+            else {
+                frame = me->m_RenderQueue.dequeue();
+            }
+        }
+
+        if (frame == nullptr) {
+            me->renderLastFrameAgain();
+            continue;
         }
 
         me->renderFrame(frame);

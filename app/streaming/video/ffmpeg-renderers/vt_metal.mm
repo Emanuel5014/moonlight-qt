@@ -538,6 +538,11 @@ public:
                     renderRect.x = 0;
                     renderRect.y = m_LastDrawableHeight - overlayTexture.height;
                 }
+                else if (i == Overlay::OverlayFloatingMenu) {
+                    SDL_Point position = Session::get()->getOverlayManager().getOverlayPosition((Overlay::OverlayType)i);
+                    renderRect.x = position.x;
+                    renderRect.y = m_LastDrawableHeight - position.y - overlayTexture.height;
+                }
 
                 renderRect.w = overlayTexture.width;
                 renderRect.h = overlayTexture.height;
@@ -860,7 +865,8 @@ public:
     int getRendererAttributes() override
     {
         // Metal supports HDR output
-        return RENDERER_ATTRIBUTE_HDR_SUPPORT;
+        // streamfork: and the floating stream menu
+        return RENDERER_ATTRIBUTE_HDR_SUPPORT | RENDERER_ATTRIBUTE_POSITIONED_OVERLAY;
     }
 
     bool isPixelFormatSupported(int videoFormat, AVPixelFormat pixelFormat) override

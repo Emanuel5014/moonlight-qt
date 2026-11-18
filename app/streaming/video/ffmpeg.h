@@ -21,12 +21,14 @@ public:
     virtual bool isHardwareAccelerated() override;
     virtual bool isAlwaysFullScreen() override;
     virtual bool isHdrSupported() override;
+    virtual bool isPositionedOverlaySupported() override;
     virtual int getDecoderCapabilities() override;
     virtual int getDecoderColorspace() override;
     virtual int getDecoderColorRange() override;
     virtual QSize getDecoderMaxResolution() override;
     virtual int submitDecodeUnit(PDECODE_UNIT du) override;
     virtual void renderFrameOnMainThread() override;
+    virtual void redrawLastFrame() override;
     virtual void setHdrMode(bool enabled) override;
     virtual bool notifyWindowChanged(PWINDOW_STATE_CHANGE_INFO info) override;
 

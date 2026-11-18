@@ -1085,6 +1085,11 @@ void PlVkRenderer::renderFrame(AVFrame *frame)
                 overlayParts[i].dst.x0 = 0;
                 overlayParts[i].dst.y0 = 0;
             }
+            else if (i == Overlay::OverlayFloatingMenu) {
+                SDL_Point position = Session::get()->getOverlayManager().getOverlayPosition((Overlay::OverlayType)i);
+                overlayParts[i].dst.x0 = position.x;
+                overlayParts[i].dst.y0 = position.y;
+            }
             overlayParts[i].dst.x1 = overlayParts[i].dst.x0 + overlayParts[i].src.x1;
             overlayParts[i].dst.y1 = overlayParts[i].dst.y0 + overlayParts[i].src.y1;
 
@@ -1327,7 +1332,8 @@ bool PlVkRenderer::notifyWindowChanged(PWINDOW_STATE_CHANGE_INFO info)
 int PlVkRenderer::getRendererAttributes()
 {
     // This renderer supports HDR (including tone mapping to SDR displays)
-    return RENDERER_ATTRIBUTE_HDR_SUPPORT;
+    // streamfork: and the floating stream menu
+    return RENDERER_ATTRIBUTE_HDR_SUPPORT | RENDERER_ATTRIBUTE_POSITIONED_OVERLAY;
 }
 
 int PlVkRenderer::getDecoderColorspace()

@@ -64,6 +64,9 @@
 #define SER_FILEDROPMAXMBPS "filedropmaxmbps"
 #define SER_VPNMODE "vpnmode"
 #define SER_VPNTUNNELMTU "vpntunnelmtu"
+#define SER_FLOATINGMENUENABLED "floatingmenuenabled"
+#define SER_FLOATINGMENUPOSX "floatingmenuposx"
+#define SER_FLOATINGMENUPOSY "floatingmenuposy"
 #define SER_SHORTCUTMODIFIERS "shortcutmodifiers"
 #define SER_SHORTCUTS "shortcuts"
 #define SER_LOWLATENCYBACKUP "lowLatency/backup"
@@ -204,6 +207,9 @@ void StreamingPreferences::reload()
                                                   static_cast<int>(VpnMode::VPN_AUTO)).toInt());
     // 1420 is the default WireGuard MTU
     vpnTunnelMtu = settings.value(SER_VPNTUNNELMTU, 1420).toInt();
+    floatingMenuEnabled = settings.value(SER_FLOATINGMENUENABLED, true).toBool();
+    floatingMenuPosX = qBound(0.0, settings.value(SER_FLOATINGMENUPOSX, 0.5).toDouble(), 1.0);
+    floatingMenuPosY = qBound(0.0, settings.value(SER_FLOATINGMENUPOSY, 0.0).toDouble(), 1.0);
     shortcutModifiers = settings.value(SER_SHORTCUTMODIFIERS, static_cast<int>(ShortcutKeyNames::MOD_DEFAULT)).toInt() & ShortcutKeyNames::MOD_ALL;
     if (shortcutModifiers == 0) {
         shortcutModifiers = ShortcutKeyNames::MOD_DEFAULT;
@@ -363,6 +369,16 @@ QString StreamingPreferences::getSuffixFromLanguage(StreamingPreferences::Langua
     }
 }
 
+void StreamingPreferences::saveFloatingMenuPosition(double posX, double posY)
+{
+    QSettings settings;
+
+    floatingMenuPosX = posX;
+    floatingMenuPosY = posY;
+    settings.setValue(SER_FLOATINGMENUPOSX, floatingMenuPosX);
+    settings.setValue(SER_FLOATINGMENUPOSY, floatingMenuPosY);
+}
+
 void StreamingPreferences::save()
 {
     QSettings settings;
@@ -417,6 +433,9 @@ void StreamingPreferences::save()
     settings.setValue(SER_FILEDROPMAXMBPS, fileDropMaxMbps);
     settings.setValue(SER_VPNMODE, static_cast<int>(vpnMode));
     settings.setValue(SER_VPNTUNNELMTU, vpnTunnelMtu);
+    settings.setValue(SER_FLOATINGMENUENABLED, floatingMenuEnabled);
+    settings.setValue(SER_FLOATINGMENUPOSX, floatingMenuPosX);
+    settings.setValue(SER_FLOATINGMENUPOSY, floatingMenuPosY);
     settings.setValue(SER_SHORTCUTMODIFIERS, shortcutModifiers);
     settings.beginGroup(SER_SHORTCUTS);
     for (auto it = shortcutKeys.constBegin(); it != shortcutKeys.constEnd(); ++it) {

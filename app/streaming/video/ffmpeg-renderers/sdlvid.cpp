@@ -246,6 +246,11 @@ void SdlRenderer::renderOverlay(Overlay::OverlayType type)
                 m_OverlayRects[type].x = 0;
                 m_OverlayRects[type].y = 0;
             }
+            else if (type == Overlay::OverlayFloatingMenu) {
+                SDL_Point position = Session::get()->getOverlayManager().getOverlayPosition(type);
+                m_OverlayRects[type].x = position.x;
+                m_OverlayRects[type].y = position.y;
+            }
 
             m_OverlayRects[type].w = newSurface->w;
             m_OverlayRects[type].h = newSurface->h;
@@ -657,4 +662,10 @@ int SdlRenderer::getDecoderColorRange()
 #else
     return COLOR_RANGE_LIMITED;
 #endif
+}
+
+int SdlRenderer::getRendererAttributes()
+{
+    // streamfork: floating stream menu
+    return RENDERER_ATTRIBUTE_POSITIONED_OVERLAY;
 }

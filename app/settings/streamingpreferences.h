@@ -197,11 +197,18 @@ public:
     Q_PROPERTY(int fileDropMaxMbps MEMBER fileDropMaxMbps NOTIFY fileDropChanged)
     Q_PROPERTY(VpnMode vpnMode MEMBER vpnMode NOTIFY vpnModeChanged)
     Q_PROPERTY(int vpnTunnelMtu MEMBER vpnTunnelMtu NOTIFY vpnTunnelMtuChanged)
+    Q_PROPERTY(bool floatingMenuEnabled MEMBER floatingMenuEnabled NOTIFY floatingMenuChanged)
+    Q_PROPERTY(double floatingMenuPosX MEMBER floatingMenuPosX NOTIFY floatingMenuChanged)
+    Q_PROPERTY(double floatingMenuPosY MEMBER floatingMenuPosY NOTIFY floatingMenuChanged)
     Q_PROPERTY(bool lowLatencyPresetApplied READ isLowLatencyPresetApplied NOTIFY lowLatencyPresetChanged)
     Q_PROPERTY(int shortcutModifiers MEMBER shortcutModifiers NOTIFY shortcutsChanged)
     Q_PROPERTY(QVariantMap shortcutKeys READ getShortcutKeys NOTIFY shortcutsChanged)
 
     Q_INVOKABLE bool retranslate();
+
+    // streamfork: saves only the floating menu position (not the other,
+    // possibly command-line overridden, values)
+    void saveFloatingMenuPosition(double posX, double posY);
 
     // Configurable special key combos (see settings/shortcuts.h)
     Q_INVOKABLE static QStringList shortcutActions();
@@ -282,6 +289,11 @@ public:
     int fileDropMaxMbps; // 0 = no limit
     VpnMode vpnMode;
     int vpnTunnelMtu;
+    // streamfork: floating stream menu (spec 08). The position is the button
+    // center as a fraction of the window size.
+    bool floatingMenuEnabled;
+    double floatingMenuPosX;
+    double floatingMenuPosY;
     int shortcutModifiers;
     QMap<QString, QString> shortcutKeys;
 
@@ -328,6 +340,7 @@ signals:
     void fileDropChanged();
     void vpnModeChanged();
     void vpnTunnelMtuChanged();
+    void floatingMenuChanged();
     void shortcutsChanged();
     void lowLatencyPresetChanged();
 

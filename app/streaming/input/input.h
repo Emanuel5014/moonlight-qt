@@ -85,6 +85,9 @@ struct DualSenseOutputReport{
 
 class SdlInputHandler
 {
+    // streamfork: the floating stream menu runs the special key combos
+    friend class FloatingMenu;
+
 public:
     explicit SdlInputHandler(StreamingPreferences& prefs, int streamWidth, int streamHeight);
 
@@ -180,6 +183,7 @@ private:
         KeyComboTogglePointerRegionLock,
         KeyComboQuitAndExit,
         KeyComboToggleKeyboardGrab,
+        KeyComboToggleFloatingMenu, // streamfork spec 08
         KeyComboMax
     };
 

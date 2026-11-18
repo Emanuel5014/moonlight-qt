@@ -197,6 +197,8 @@ SOURCES += \
     streaming/session.cpp \
     streaming/clipboardsync.cpp \
     streaming/filedrop.cpp \
+    streaming/floatingmenu.cpp \
+    streaming/floatingmenulogic.cpp \
     streaming/audio/audio.cpp \
     streaming/audio/renderers/sdlaud.cpp \
     gui/computermodel.cpp \
@@ -239,6 +241,8 @@ HEADERS += \
     streaming/session.h \
     streaming/clipboardsync.h \
     streaming/filedrop.h \
+    streaming/floatingmenu.h \
+    streaming/floatingmenulogic.h \
     streaming/audio/renderers/renderer.h \
     streaming/audio/renderers/sdl.h \
     gui/computermodel.h \
